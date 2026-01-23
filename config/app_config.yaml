@@ -1,0 +1,6 @@
+settings:
+  data_path: "data/260122/稅籍_coded_202601221618.csv"
+  defaults:
+    row_dim: "COUNTY_N"
+    col_dim: "AREA_ALL_SUM_PING_GROUP"
+    sum_metric: "CNT"

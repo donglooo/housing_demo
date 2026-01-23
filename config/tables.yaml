@@ -1,0 +1,730 @@
+presets:
+- description: 2025/12/26 第一批報表
+  name: 常態性表格
+  tasks:
+  - aggfunc: sum
+    cols:
+    - 低度用電(Q2)
+    csv_source: data/260122/稅電_coded_202601221616.csv
+    description: 全國住宅使用現況－按地區分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑1
+    rows:
+    - 縣市
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 低度用電(Q2)
+    csv_source: data/260122/稅電_coded_202601221616.csv
+    description: 全國住宅使用現況－按建物總樓層分
+    exclude_values:
+    - 不明
+    - 資料缺失
+    name: 表 1‑2
+    rows:
+    - 總樓層
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 低度用電(Q2)
+    csv_source: data/260122/稅電_coded_202601221616.csv
+    description: 全國住宅使用現況－按建物屋齡分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑3
+    rows:
+    - 屋齡
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 低度用電(Q2)
+    csv_source: data/260122/稅電_coded_202601221616.csv
+    description: 全國住宅使用現況－按建物面積分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑4
+    rows:
+    - 總面積(主建物+陽台)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 低度用電(Q2)
+    csv_source: data/260122/稅電_coded_202601221616.csv
+    description: 全國住宅使用現況－按建物使用類別分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑5
+    rows:
+    - 用途
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 低度用電(Q2)
+    csv_source: data/260122/稅電_coded_202601221616.csv
+    description: 全國住宅使用現況－按建物結構分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑6
+    rows:
+    - 結構
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 屋齡
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各地區住宅分布－按建物屋齡分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑7
+    rows:
+    - 縣市
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 總面積(主建物+陽台)
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各地區住宅分布－按建物面積（坪）分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑8
+    rows:
+    - 縣市
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 總樓層
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各地區住宅分布－按建物總樓層分
+    exclude_values:
+    - 不明
+    name: 表 1‑9
+    rows:
+    - 縣市
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 用途
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各地區住宅分布－按建物使用類別分
+    name: 表 1‑10
+    rows:
+    - 縣市
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 結構
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各地區住宅分布－按建物結構分
+    name: 表 1‑11
+    rows:
+    - 縣市
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 總面積(主建物+陽台)
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各建物屋齡分布－按建物面積（坪）分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑12
+    rows:
+    - 屋齡
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 屋齡
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各建物屋齡分布－按建物總樓層分
+    exclude_values:
+    - 不明
+    - 資料缺失
+    name: 表 1‑13
+    rows:
+    - 總樓層
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 屋齡
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各建物屋齡分布－按建物使用類別
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑14
+    rows:
+    - 用途
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 屋齡
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各建物屋齡分布－按建物結構分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑15
+    rows:
+    - 結構
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 總面積(主建物+陽台)
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各建物面積（坪）分布－按建物總樓層分
+    exclude_values:
+    - 不明
+    - 資料缺失
+    name: 表 1‑16
+    rows:
+    - 總樓層
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 總面積(主建物+陽台)
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各建物面積（坪）分布－按建物使用類別分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑17
+    rows:
+    - 用途
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 總面積(主建物+陽台)
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各建物面積（坪）分布－按建物結構分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑18
+    rows:
+    - 結構
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 總樓層
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各建物總樓層分布－按建物使用類別分
+    exclude_values:
+    - 不明
+    name: 表 1‑19
+    rows:
+    - 用途
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 總樓層
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各建物總樓層分布－按建物結構分
+    exclude_values:
+    - 不明
+    name: 表 1‑20
+    rows:
+    - 結構
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 用途
+    csv_source: data/260122/稅籍_coded_202601221618.csv
+    description: 各建物使用類別分布－按建物結構分
+    name: 表 1‑21
+    rows:
+    - 結構
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 低度用電(Q2)
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按住宅使用狀況分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑22
+    rows:
+    - 登記原因
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按地區分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑23
+    rows:
+    - 縣市
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按建物屋齡分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑24
+    rows:
+    - 屋齡
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按建物面積(坪)分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑25
+    rows:
+    - 總面積(主建物+附屬建物)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按建物總樓層分
+    exclude_values:
+    - 不明
+    - 資料缺失
+    name: 表 1‑26
+    rows:
+    - 總樓層
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按建物使用類別分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑27
+    rows:
+    - 用途
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按建物結構分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑28
+    rows:
+    - 結構
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按住宅使用狀況與地區分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑29
+    rows:
+    - 縣市
+    - 低度用電(Q4)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按住宅使用狀況與建物屋齡分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑30
+    rows:
+    - 屋齡
+    - 低度用電(Q4)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按住宅使用狀況與建物面積(坪)分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑31
+    rows:
+    - 總面積(主建物+附屬建物)
+    - 低度用電(Q4)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按住宅使用狀況與建物總樓層分
+    exclude_values:
+    - 不明
+    - 資料缺失
+    name: 表 1‑32
+    rows:
+    - 總樓層
+    - 低度用電(Q4)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按住宅使用狀況與建物使用類別分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑33
+    rows:
+    - 用途
+    - 低度用電(Q4)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 登記原因
+    csv_source: data/260122/所有權_coded_202601221611.csv
+    description: 建物所有權登記原因－按住宅使用狀況與建物結構分
+    exclude_values:
+    - 資料缺失
+    name: 表 1‑34
+    rows:
+    - 結構
+    - 低度用電(Q4)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 宅內人口數
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 宅內人口數－按地區分
+    name: 表 2‑1
+    rows:
+    - 縣市
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 宅內人口數
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 宅內人口數－按建物屋齡分
+    exclude_values:
+    - 資料缺失
+    name: 表 2‑2
+    rows:
+    - 屋齡
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 宅內人口數
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 宅內人口數－按建物面積(坪)分
+    exclude_values:
+    - 資料缺失
+    name: 表 2‑3
+    rows:
+    - 總面積(主建物+陽台)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 宅內人口數
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 宅內人口數－按建物總樓層分
+    exclude_values:
+    - 不明
+    name: 表 2‑4
+    rows:
+    - 總樓層
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 低度用電(Q4)
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 宅內人口數－按住宅使用狀況分
+    exclude_values:
+    - 資料缺失
+    name: 表 2‑5
+    rows:
+    - 宅內人口數
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 宅內人口數
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 宅內人口數－按建物使用類別分
+    name: 表 2‑6
+    rows:
+    - 用途
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 宅內人口數
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 宅內人口數－按建物結構分
+    name: 表 2‑7
+    rows:
+    - 結構
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 屋齡
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 合住情形－按建物屋齡分
+    exclude_values:
+    - 資料缺失
+    name: 表 2‑8
+    rows:
+    - 是否同住
+    - 宅內人口數
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 總面積(主建物+陽台)
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 合住情形－按建物面積(坪)分
+    exclude_values:
+    - 資料缺失
+    name: 表 2‑9
+    rows:
+    - 是否同住
+    - 宅內人口數
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 總樓層
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 合住情形－按建物總樓層分
+    exclude_values:
+    - 不明
+    name: 表 2‑10
+    rows:
+    - 是否同住
+    - 宅內人口數
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 低度用電(Q4)
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 合住情形－按住宅使用狀況分
+    exclude_values:
+    - 資料缺失
+    name: 表 2‑11
+    rows:
+    - 是否同住
+    - 宅內人口數
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 用途
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 合住情形－按建物使用類別分
+    name: 表 2‑12
+    rows:
+    - 是否同住
+    - 宅內人口數
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 結構
+    csv_source: data/251215/宅戶_202512161300.csv
+    description: 合住情形－按結構分
+    name: 表 2‑13
+    rows:
+    - 是否同住
+    - 宅內人口數
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 家庭型態
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 家戶類別－按地區分
+    name: 表 2‑14
+    rows:
+    - 縣市
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 家庭型態
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 家戶類別－按建物屋齡分
+    exclude_values:
+    - 資料缺失
+    name: 表 2‑15
+    rows:
+    - 屋齡
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 家庭型態
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 家戶類別－按建物面積(坪)分
+    exclude_values:
+    - 資料缺失
+    name: 表 2‑16
+    rows:
+    - 總面積(主建物+陽台)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 家庭型態
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 家戶類別－按建物總樓層分
+    exclude_values:
+    - 不明
+    name: 表 2‑17
+    rows:
+    - 總樓層
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 低度用電(Q4)
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 家戶類別－按住宅使用狀況分
+    exclude_values:
+    - 資料缺失
+    name: 表 2‑18
+    rows:
+    - 家庭型態
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 家庭型態
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 家戶類別－按建物使用類別分
+    name: 表 2‑19
+    rows:
+    - 用途
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 家庭型態
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 家戶類別－按結構分
+    name: 表 2‑20
+    rows:
+    - 結構
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 是否戶籍地自有
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 該戶自有狀況－按建物所有權登記原因分
+    exclude_values:
+    - 無法判斷
+    - 資料缺失
+    name: 表 2‑21
+    rows:
+    - 戶籍地登記原因
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 是否戶籍地自有
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 該戶自有狀況－按地區分
+    exclude_values:
+    - 無法判斷
+    name: 表 2‑22
+    rows:
+    - 縣市
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 是否戶籍地自有
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 該戶自有狀況－按建物屋齡分
+    exclude_values:
+    - 無法判斷
+    - 資料缺失
+    name: 表 2‑23
+    rows:
+    - 屋齡
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 是否戶籍地自有
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 該戶自有狀況－按建物面積(坪)分
+    exclude_values:
+    - 無法判斷
+    - 資料缺失
+    name: 表 2‑24
+    rows:
+    - 總面積(主建物+陽台)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 是否戶籍地自有
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 該戶自有狀況－按建物總樓層分
+    exclude_values:
+    - 不明
+    - 無法判斷
+    name: 表 2‑25
+    rows:
+    - 總樓層
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 是否戶籍地自有
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 該戶自有狀況－按住宅使用狀況分
+    exclude_values:
+    - 無法判斷
+    - 資料缺失
+    name: 表 2‑26
+    rows:
+    - 低度用電(Q4)
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 是否戶籍地自有
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 該戶自有狀況－按建物使用類別分
+    exclude_values:
+    - 無法判斷
+    name: 表 2‑27
+    rows:
+    - 用途
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 是否戶籍地自有
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 該戶自有狀況－按建物結構分
+    exclude_values:
+    - 無法判斷
+    name: 表 2‑28
+    rows:
+    - 結構
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 是否戶籍地自有
+    csv_source: data/251224/家戶(2)_202512241150.csv
+    description: 該戶自有狀況－按家戶人口分
+    exclude_values:
+    - 無法判斷
+    name: 表 2‑29
+    rows:
+    - 戶內人口數
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 是否戶籍地自有
+    csv_source: data/251224/家戶(1)_202512241147.csv
+    description: 該戶自有狀況－按家戶類別分
+    exclude_values:
+    - 無法判斷
+    name: 表 2‑31
+    rows:
+    - 家庭型態
+    values: 筆數
+  - aggfunc: sum
+    cols:
+    - 戶內人口數
+    csv_source: data/251224/家戶(4)_202512241201.csv
+    description: 戶內擁屋數量－按家戶人口分
+    name: 表 2‑32
+    rows:
+    - 戶內獨立持有房屋數
+    values: 筆數
+saved_configs:
+  表 1‑8、各地區住宅分布－按建物面積（坪）分:
+    data_src: C:\Users\10523\Desktop\Dong\99_GitHub\housing-research\data\260122\稅籍_coded_202601221618.csv
+    filters: {}
+    pivot_col: AREA_ALL_SUM_PING_GROUP
+    pivot_row: COUNTY_N
+    pivot_sum: CNT
+settings:
+  data_path: data/260122/稅籍_coded_202601221618.csv
+  defaults:
+    col_dim: AREA_ALL_SUM_PING_GROUP
+    row_dim: COUNTY_N
+    sum_metric: CNT

@@ -1,0 +1,8 @@
+/debug
+/doc
+/export/*
+/notes
+/test
+/venv
+*sql
+*csv
