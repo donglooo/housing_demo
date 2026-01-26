@@ -102,53 +102,51 @@ if pivot_row == pivot_col:
 
 
 # ========================= QUERY EXECUTION =========================
-if st.button("查詢", type="primary"):
-    with st.spinner("正在計算樞紐分析表..."):
-        try:
-            # Prepare filters for caching (hashable tuple)
-            current_filter_items = []
-            for col in df_decode.columns[1:-1]:
-                if col in st.session_state and st.session_state[col]:
-                    current_filter_items.append(
-                        (col, tuple(sorted(st.session_state[col])))
-                    )
-            current_filter_items = tuple(sorted(current_filter_items))
+# if st.button("查詢", type="primary"):
+with st.spinner("正在計算樞紐分析表..."):
+    try:
+        # Prepare filters for caching (hashable tuple)
+        current_filter_items = []
+        for col in df_decode.columns[1:-1]:
+            if col in st.session_state and st.session_state[col]:
+                current_filter_items.append((col, tuple(sorted(st.session_state[col]))))
+        current_filter_items = tuple(sorted(current_filter_items))
 
-            # Compute pivot tables
-            unique_years, results, row_totals_year, col_totals_year, all_totals_year = (
-                compute_pivot_tables(
-                    df_decode,
-                    pivot_row,
-                    pivot_col,
-                    pivot_sum,
-                    current_filter_items,
-                    codebook_sel,
-                )
+        # Compute pivot tables
+        unique_years, results, row_totals_year, col_totals_year, all_totals_year = (
+            compute_pivot_tables(
+                df_decode,
+                pivot_row,
+                pivot_col,
+                pivot_sum,
+                current_filter_items,
+                codebook_sel,
             )
+        )
 
-            # Check if we have any results
-            if not results or all(v is None for v in results.values()):
-                st.warning("⚠️ 沒有符合篩選條件的資料。請調整篩選條件。")
-                st.stop()
+        # Check if we have any results
+        if not results or all(v is None for v in results.values()):
+            st.warning("⚠️ 沒有符合篩選條件的資料。請調整篩選條件。")
+            st.stop()
 
-            # Render pivot table tabs
-            render_pivot_tabs(unique_years, results, axis)
+        # Render pivot table tabs
+        render_pivot_tabs(unique_years, results, axis)
 
-            # Calculate growth rates
-            overall_growth_df, row_growth_df, col_growth_df = calculate_growth_rates(
-                row_totals_year, col_totals_year, all_totals_year
-            )
+        # Calculate growth rates
+        overall_growth_df, row_growth_df, col_growth_df = calculate_growth_rates(
+            row_totals_year, col_totals_year, all_totals_year
+        )
 
-            # Render growth analysis
-            render_growth_analysis(
-                overall_growth_df, row_growth_df, col_growth_df, pivot_row, pivot_col
-            )
+        # Render growth analysis
+        render_growth_analysis(
+            overall_growth_df, row_growth_df, col_growth_df, pivot_row, pivot_col
+        )
 
-            st.success("✅ 分析完成！")
+        st.success("✅ 分析完成！")
 
-        except Exception as e:
-            st.error(f"❌ 計算時發生錯誤：{str(e)}")
-            import traceback
+    except Exception as e:
+        st.error(f"❌ 計算時發生錯誤：{str(e)}")
+        import traceback
 
-            with st.expander("詳細錯誤訊息"):
-                st.code(traceback.format_exc())
+        with st.expander("詳細錯誤訊息"):
+            st.code(traceback.format_exc())
