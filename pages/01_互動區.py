@@ -75,9 +75,9 @@ except Exception as e:
     st.stop()
 
 CODEBOOK_MAPPING = {
-    '稅電': 'codebook_power.yaml',
-    '所有權': 'codebook_own.yaml',
-    '稅籍': 'codebook_tax.yaml'
+    '稅電': 'power',
+    '所有權': 'ownership',
+    '稅籍': 'tax'
 }
 
 
@@ -91,12 +91,13 @@ CODEBOOK_MAPPING = {
 #     st.stop()
 status = 0
 # selected_codebook_name = st.sidebar.selectbox("Select Codebook", codebook_options)
-CODEBOOK_PATH = os.path.join(CONFIG_DIR, CODEBOOK_MAPPING[prefix])
+CODEBOOK_PATH = os.path.join(CONFIG_DIR, 'codebook.yaml')
 
 #========================= MAIN =========================
 @st.cache_data
 def load_codebook(CODEBOOK_PATH):
-    return yaml.safe_load(open(CODEBOOK_PATH, 'r', encoding='utf-8'))
+    codebook = yaml.safe_load(open(CODEBOOK_PATH, 'r', encoding='utf-8'))
+    return codebook
 
 
 @st.cache_data(ttl=1800, max_entries=3)
@@ -106,18 +107,17 @@ def load_data(DATA_PATH):
     return df
 
 @st.cache_data
-def get_decoded_data(df, _codebook):
+def get_decoded_data(df, codebook):
     df_decode = df.copy()
-    for col in codebook['mappings'].keys():
+    for col in codebook.keys():
         if col in df_decode.columns:
-            df_decode[col] = df_decode[col].replace(codebook['mappings'][col]['codes'])
+            df_decode[col] = df_decode[col].replace(codebook[col]['codes'])
     return df_decode
 
 def fet_chinese_columns(codebook):
     chinese_columns = {}
-    for col in codebook['mappings'].keys():
-        # chinese_columns[codebook['mappings'][col]['name']] = col
-        chinese_columns[col] = codebook['mappings'][col]['name']
+    for col in codebook.keys():
+        chinese_columns[col] = codebook[col]['name']
     return chinese_columns
 
 def get_label(key):
@@ -212,10 +212,12 @@ def compute_all_pivots(df_decode, pivot_row, pivot_col, pivot_sum, filter_items,
 
 #========================= OUTPUT =========================
 # Load data
-codebook = load_codebook(CODEBOOK_PATH)
-chinese_columns = fet_chinese_columns(codebook)
+codebook = load_codebook(CODEBOOK_PATH) # 整本
+dataset_sel = CODEBOOK_MAPPING[prefix] # 依資料集選定
+codebook_sel = codebook[dataset_sel]
+chinese_columns = fet_chinese_columns(codebook_sel)
 df = load_data(DATA_PATH)
-df_decode = get_decoded_data(df, codebook)
+df_decode = get_decoded_data(df, codebook_sel)
 
 status = 1
 # PIVOT_TABLE
@@ -270,7 +272,7 @@ if status == 2 and st.button('查詢', type='primary'):
         st.session_state['pivot_col'], 
         st.session_state['pivot_sum'], 
         current_filter_items,
-        codebook['mappings']
+        codebook_sel
     )
 
     # Render
