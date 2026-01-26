@@ -23,4 +23,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENTRYPOINT []
 
 # Run the streamlit application
-CMD ["sh", "-c", "uv run streamlit run 首頁.py --server.port=${PORT:-8501} --server.address=0.0.0.0"]
+CMD ["uv run streamlit run 首頁.py --server.port=${PORT:-8501} --server.address=0.0.0.0"]
