@@ -75,8 +75,6 @@ try:
     df = load_data(DATA_PATH)
     df_decode = decode_data(df, codebook_sel)
 
-    # st.success(f"✅ 成功載入資料集：{dataset_type}")
-
 except Exception as e:
     st.error(f"❌ 載入資料時發生錯誤：{str(e)}")
     st.stop()
@@ -91,7 +89,7 @@ pivot_row, pivot_col, pivot_sum = render_pivot_selector(chinese_columns)
 render_filter_sidebar(df_decode, chinese_columns)
 
 # Render visual settings
-# axis = render_visual_settings()
+axis = render_visual_settings()
 
 
 # ========================= VALIDATION =========================
@@ -103,7 +101,6 @@ if pivot_row == pivot_col:
 
 # ========================= QUERY EXECUTION =========================
 if st.button("查詢", type="primary"):
-    # with st.spinner("正在計算樞紐分析表..."):
     try:
         # Prepare filters for caching (hashable tuple)
         current_filter_items = []

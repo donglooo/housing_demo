@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 def get_unique_values(df: pd.DataFrame) -> Dict[str, List]:
     """
     Get unique values for all columns in the DataFrame with caching.
-    
+
     This avoids recalculating .unique() on large DataFrames on every
     script rerun, which is a major performance bottleneck.
 
