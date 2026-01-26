@@ -1,6 +1,7 @@
 mappings:
   COUNTY_N:
     name: "縣市"
+    dtype: "category"
     codes:
       1: "臺北市"
       2: "新北市"
@@ -29,6 +30,7 @@ mappings:
 
   AREA_ALL_SUM_PING_GROUP:
     name: "坪數區間"
+    dtype: "Int64"
     codes:
       11: "15坪以下"
       12: "15-19坪"
@@ -48,6 +50,7 @@ mappings:
 
   HOU_DEPR_YEAR_OLD_GROUP:
     name: "屋齡區間"
+    dtype: "Int64"
     codes:
       11: "1年以下"
       12: "1-5年"
@@ -64,12 +67,13 @@ mappings:
 
   STRUC_MAX_GROUP:
     name: "構造別"
+    dtype: "Int64"
     codes:
-      1: "鋼骨鋼筋混擬土造"
-      2: "鋼骨鋼筋混擬土造"
-      3: "鋼骨鋼筋混擬土造"
-      4: "鋼筋混擬土造"
-      5: "預鑄混擬土造"
+      1: "鋼骨鋼筋混凝土造"
+      2: "鋼骨鋼筋混凝土造"
+      3: "鋼骨鋼筋混凝土造"
+      4: "鋼筋混凝土造"
+      5: "壁式預鑄鋼筋混凝土造"
       6: "加強磚造"
       7: "其他"
       8: "其他"
@@ -79,6 +83,7 @@ mappings:
 
   HOU_FLOOR_MAX_GROUP:
     name: "樓層區間"
+    dtype: "Int64"
     codes:
       11: "1-3層"
       12: "4-5層"

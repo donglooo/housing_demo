@@ -51,17 +51,6 @@ DATA_DIR = os.path.join(BASE_DIR, 'data')
 CONFIG_DIR = os.path.join(BASE_DIR, 'config')
 
 #========================= CONFIG =========================
-# CODEBOOK_PATH = os.path.join(CONFIG_DIR, 'codebook.yaml')
-# Reading combined config from tables.yaml
-TABLES_CONFIG_PATH = os.path.join(CONFIG_DIR, 'tables.yaml')
-
-# Load App Config
-if os.path.exists(TABLES_CONFIG_PATH):
-    with open(TABLES_CONFIG_PATH, 'r', encoding='utf-8') as f:
-        app_settings = yaml.safe_load(f)
-else:
-    app_settings = {}
-
 # config: source data
 # Allow relative path in config being resolved to absolute
 # select data from dropdown: data\*\*.csv
@@ -91,6 +80,7 @@ CODEBOOK_MAPPING = {
     '稅籍': 'codebook_tax.yaml'
 }
 
+
 # CODEBOOK
 # CODEBOOK SELECTION
 # codebook_list = glob.glob(os.path.join(CONFIG_DIR, 'codebook*.yaml'))
@@ -102,11 +92,16 @@ CODEBOOK_MAPPING = {
 status = 0
 # selected_codebook_name = st.sidebar.selectbox("Select Codebook", codebook_options)
 CODEBOOK_PATH = os.path.join(CONFIG_DIR, CODEBOOK_MAPPING[prefix])
-codebook = yaml.safe_load(open(CODEBOOK_PATH, 'r', encoding='utf-8'))
 
 #========================= MAIN =========================
+@st.cache_data
+def load_codebook(CODEBOOK_PATH):
+    return yaml.safe_load(open(CODEBOOK_PATH, 'r', encoding='utf-8'))
+
+
 @st.cache_data(ttl=1800, max_entries=3)
 def load_data(DATA_PATH):
+    # 預設每欄都是 str，除了 CNT
     df = pd.read_parquet(DATA_PATH, engine='pyarrow')
     return df
 
@@ -127,54 +122,6 @@ def fet_chinese_columns(codebook):
 
 def get_label(key):
     return chinese_columns.get(key, key)
-
-#========================= OUTPUT =========================
-# Load data
-chinese_columns = fet_chinese_columns(codebook)
-df = load_data(DATA_PATH)
-df_decode = get_decoded_data(df, codebook)
-# Defaults from config
-def_row = app_settings.get('settings', {}).get('defaults', {}).get('row_dim', None)
-def_col = app_settings.get('settings', {}).get('defaults', {}).get('col_dim', None)
-def_sum = app_settings.get('settings', {}).get('defaults', {}).get('sum_metric', None)
-
-status = 1
-# PIVOT_TABLE
-# ROW
-# COL
-# SUM
-pivot_row, pivot_col, pivot_sum = st.columns(3)
-
-# config: row
-opts = chinese_columns.keys()
-p_row = pivot_row.selectbox("列維度(Row)", opts, format_func=get_label, key="pivot_row") 
-
-# config: col
-p_col = pivot_col.selectbox("欄維度(Column)", opts, format_func=get_label, key="pivot_col") 
-
-# config: sum
-# opts_sum = chinese_columns.keys()[-1:] # usually just 'CNT' or last col
-p_sum = pivot_sum.selectbox("計算欄", 'CNT', key="pivot_sum") 
-
-# 製作篩選器（複選）
-st.sidebar.header("Filters")
-for col in df_decode.columns[1:-1]:
-    st.sidebar.multiselect(get_label(col), df_decode[col].unique(), key=col)
-
-# 視覺化設定，表格顏色標記: None, 0, 1
-st.sidebar.header("Visual Settings")
-check_visual_axis = st.sidebar.radio("視覺化比較軸向", ["全表", "直向", "橫向"], index=0, horizontal=True)
-axis_options = {
-    "全表": None,   # 適合：找全域最大/最小值
-    "直向": 0,         # 適合：比較同一月份各縣市的表現
-    "橫向": 1          # 適合：比較同一縣市不同坪數的分布
-}
-axis = axis_options[check_visual_axis]
-
-if st.session_state['pivot_row'] == st.session_state['pivot_col']:
-    st.warning('🔼 請選擇不同的交叉維度')
-else:
-    status = 2
 
 @st.cache_data
 def compute_all_pivots(df_decode, pivot_row, pivot_col, pivot_sum, filter_items, codebook_mappings):
@@ -262,6 +209,51 @@ def compute_all_pivots(df_decode, pivot_row, pivot_col, pivot_sum, filter_items,
         all_totals_year.append([data_yr, pivot_table.loc['全國', '全國']])
         
     return unique_years, results, row_totals_year, col_totals_year, all_totals_year
+
+#========================= OUTPUT =========================
+# Load data
+codebook = load_codebook(CODEBOOK_PATH)
+chinese_columns = fet_chinese_columns(codebook)
+df = load_data(DATA_PATH)
+df_decode = get_decoded_data(df, codebook)
+
+status = 1
+# PIVOT_TABLE
+# ROW
+# COL
+# SUM
+pivot_row, pivot_col, pivot_sum = st.columns(3)
+
+# config: row
+opts = chinese_columns.keys()
+p_row = pivot_row.selectbox("列維度(Row)", opts, format_func=get_label, key="pivot_row") 
+
+# config: col
+p_col = pivot_col.selectbox("欄維度(Column)", opts, format_func=get_label, key="pivot_col") 
+
+# config: sum
+# opts_sum = chinese_columns.keys()[-1:] # usually just 'CNT' or last col
+p_sum = pivot_sum.selectbox("計算欄", 'CNT', key="pivot_sum") 
+
+# 製作篩選器（複選）
+st.sidebar.header("Filters")
+for col in df_decode.columns[1:-1]:
+    st.sidebar.multiselect(get_label(col), df_decode[col].unique(), key=col)
+
+# 視覺化設定，表格顏色標記: None, 0, 1
+st.sidebar.header("Visual Settings")
+check_visual_axis = st.sidebar.radio("視覺化比較軸向", ["全表", "直向", "橫向"], index=0, horizontal=True)
+axis_options = {
+    "全表": None,   # 適合：找全域最大/最小值
+    "直向": 0,         # 適合：比較同一月份各縣市的表現
+    "橫向": 1          # 適合：比較同一縣市不同坪數的分布
+}
+axis = axis_options[check_visual_axis]
+
+if st.session_state['pivot_row'] == st.session_state['pivot_col']:
+    st.warning('🔼 請選擇不同的交叉維度')
+else:
+    status = 2
 
 if status == 2 and st.button('查詢', type='primary'):
     # Prepare filters for caching (hashable tuple)
@@ -370,16 +362,3 @@ if status == 2 and st.button('查詢', type='primary'):
             col_pct_df = col_pct_df.iloc[1:]
             st.write(f"欄維度 ({st.session_state['pivot_col']}) 年增率 (%):")
             st.dataframe(col_pct_df.style.format("{:,.2f}%").background_gradient(cmap='RdYlBu', vmin=-10, vmax=10))
-
-    # # 視覺化
-    # select_trend = st.selectbox("選擇項目:", trend_base_df[st.session_state['pivot_row']].unique())
-    # pivot_trend = trend_base_df[trend_base_df[st.session_state['pivot_row']] == select_trend]
-    # pivot_trend = pivot_trend.pivot_table(index='DATA_YR', columns=st.session_state['pivot_col'], values=st.session_state['pivot_sum'], aggfunc='sum')
-    # st.line_chart(pivot_trend)
-
-
-    # Save Button
-    # 可以設定表的名稱，例如我打 表1-1，然後會自行以 表1-1({PIVOT_ROW x PIVOT_COL}) 儲存名稱，必記下所有條件
-    # 包含 DATA_SRC,PIVOT_ROW, PIVOT_COL, PIVOT_SUM, FILTERS
-    # 儲存到 tables.yaml
-    # 每次使用此頁面時，可以在 side_bar 選擇紀錄，更新，就可以套用設定
