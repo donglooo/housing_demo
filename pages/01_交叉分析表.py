@@ -154,7 +154,8 @@ p_col = pivot_col.selectbox("欄維度(Column)", opts, format_func=get_label, ke
 
 # config: sum
 # opts_sum = chinese_columns.keys()[-1:] # usually just 'CNT' or last col
-p_sum = 'CNT'#pivot_sum.selectbox("計算欄", , key="pivot_sum") 
+# opts_sum = chinese_columns.keys()[-1:] # usually just 'CNT' or last col
+opts_sum= 'CNT' #pivot_sum.selectbox("計算欄", , key="pivot_sum") 
 
 # 製作篩選器（複選）
 st.sidebar.header("Filters")
@@ -195,8 +196,8 @@ def compute_all_pivots(df_decode, pivot_row, pivot_col, pivot_sum, filter_items,
 
     for data_yr in unique_years:
         # Start from base decoded DF
-        df_year = df_decode.copy()
-        
+        # df_year = df_decode.copy()
+        df_year = df_decode[df_decode['DATA_YR'] == data_yr].copy()
         # Apply Filters
         for col in df_decode.columns[1:-1]:
             if col in active_filters:
@@ -206,7 +207,7 @@ def compute_all_pivots(df_decode, pivot_row, pivot_col, pivot_sum, filter_items,
             else:
                 df_year = df_year[df_year[col].isna()]
         
-        df_year = df_year[df_year['DATA_YR'] == data_yr].copy()
+        
         
         if df_year.empty:
             results[data_yr] = None
