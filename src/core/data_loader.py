@@ -42,7 +42,7 @@ def load_data(data_path: str) -> pd.DataFrame:
     return df
 
 
-@st.cache_data
+@st.cache_data(ttl=1800, max_entries=3)
 def decode_data(df: pd.DataFrame, codebook: Dict) -> pd.DataFrame:
     """
     Apply codebook transformations to decode data.
@@ -57,15 +57,15 @@ def decode_data(df: pd.DataFrame, codebook: Dict) -> pd.DataFrame:
     Returns:
         DataFrame with decoded values
     """
-    df_decode = df.copy()
+    # df_decode = df.copy()
 
     for col in codebook.keys():
-        if col in df_decode.columns:
+        if col in df.columns:
             # Apply code mapping if it exists
             if "codes" in codebook[col]:
-                df_decode[col] = df_decode[col].replace(codebook[col]["codes"])
+                df[col] = df[col].replace(codebook[col]["codes"])
 
-    return df_decode
+    return df
 
 
 def get_chinese_columns(codebook: Dict) -> Dict[str, str]:

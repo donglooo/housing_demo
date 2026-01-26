@@ -139,7 +139,7 @@ if st.button("查詢", type="primary"):
             overall_growth_df, row_growth_df, col_growth_df, pivot_row, pivot_col
         )
 
-        st.success("✅ 分析完成！")
+        # st.success("✅ 分析完成！")
 
     except Exception as e:
         st.error(f"❌ 計算時發生錯誤：{str(e)}")
