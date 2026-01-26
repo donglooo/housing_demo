@@ -89,7 +89,7 @@ def compute_pivot_tables(
         pivot_table = sort_pivot_table(pivot_table, pivot_row, pivot_col, codebook)
 
         # Fill NaN with 0
-        # pivot_table = pivot_table.fillna(0)
+        pivot_table = pivot_table.fillna(0)
 
         # Add totals
         pivot_table = add_totals(pivot_table)
