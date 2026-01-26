@@ -1,366 +1,155 @@
-# 示範開發區，之後請你幫我優化至正式流程內
+"""
+互動區 - Interactive Pivot Table Analysis Page
+
+This page provides an interactive interface for exploring data through
+customizable pivot tables with filtering and year-over-year analysis.
+"""
+
 import streamlit as st
-import os
-import pandas as pd
-import yaml
-import numpy as np
-import matplotlib.pyplot as plt
 import glob
-import re
-import pyarrow
+import os
+
+# Import core modules
+from src.core.config_manager import (
+    get_base_paths,
+    resolve_data_path,
+    detect_dataset_type,
+    get_codebook_section,
+)
+from src.core.data_loader import (
+    load_codebook,
+    load_data,
+    decode_data,
+    get_chinese_columns,
+)
+from src.core.pivot_engine import compute_pivot_tables, calculate_growth_rates
+from src.core.ui_components import (
+    render_pivot_selector,
+    render_filter_sidebar,
+    render_visual_settings,
+    render_pivot_tabs,
+    render_growth_analysis,
+)
 
 
-st.set_page_config(page_title="Playground", page_icon="🏠", layout="wide", initial_sidebar_state="expanded")
+# ========================= PAGE CONFIG =========================
+st.set_page_config(
+    page_title="Playground",
+    page_icon="🏠",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-#========================= FUNCTION =========================
-def apply_pareto(df_pivot, top_n):
-    """
-    對透視表應用 Pareto 法則：保留 Top N，其餘合併為 'Others'
-    """
-    # 如果資料行數少於 Top N，不需處理
-    if len(df_pivot) <= top_n:
-        return df_pivot
 
-    # 1. 確保有 '全國' 欄位可供排序 (如果還沒算，先算暫時的)
-    if '全國' not in df_pivot.columns:
-        df_pivot['全國'] = df_pivot.sum(axis=1)
-    
-    # 2. 排序
-    df_sorted = df_pivot.sort_values(by='全國', ascending=False)
-    
-    # 3. 切分 Top N 與 Tail
-    df_top = df_sorted.head(top_n)
-    df_tail = df_sorted.iloc[top_n:]
-    
-    # 4. 如果有剩餘資料，合併為 Others
-    if not df_tail.empty:
-        # Sum the tail, convert to DataFrame and Transpose to match row format
-        others_row = df_tail.sum().to_frame().T
-        others_row.index = ['其他 (Others)']
-        
-        # 合併
-        df_final = pd.concat([df_top, others_row])
-    else:
-        df_final = df_top
-        
-    return df_final
+# ========================= INITIALIZE PATHS =========================
+BASE_DIR, DATA_DIR, CONFIG_DIR = get_base_paths()
+CODEBOOK_PATH = os.path.join(CONFIG_DIR, "codebook.yaml")
 
-#========================= PATH INITIALIZE =========================
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, 'data')
-CONFIG_DIR = os.path.join(BASE_DIR, 'config')
 
-#========================= CONFIG =========================
-# config: source data
-# Allow relative path in config being resolved to absolute
-# select data from dropdown: data\*\*.csv
-file_list = glob.glob(os.path.join(DATA_DIR, '**', '*.parquet'))
-raw_data_path = st.selectbox("選擇資料集", file_list)
+# ========================= DATA SELECTION =========================
 
-if not os.path.isabs(raw_data_path):
-    DATA_PATH = os.path.join(BASE_DIR, raw_data_path)
-else:
-    DATA_PATH = raw_data_path
+# Get list of available data files
+file_list = glob.glob(os.path.join(DATA_DIR, "**", "*.parquet"), recursive=True)
 
-# 確認檔案的前綴
-reg_pat = r'^(.*)_coded'
-try:
-    match = re.search(reg_pat, os.path.basename(DATA_PATH))
-    if not match:
-        st.error(f"檔案名稱格式錯誤: {os.path.basename(DATA_PATH)}")
-        st.stop()
-    prefix = match.group(1)
-except Exception as e:
-    st.error(f"處理檔案時發生錯誤: {str(e)}")
+if not file_list:
+    st.error("❌ 找不到任何資料檔案。請檢查 data 目錄。")
     st.stop()
 
-CODEBOOK_MAPPING = {
-    '稅電': 'power',
-    '所有權': 'ownership',
-    '稅籍': 'tax'
-}
+raw_data_path = st.selectbox("選擇資料集", file_list)
+DATA_PATH = resolve_data_path(raw_data_path, BASE_DIR)
 
 
-# CODEBOOK
-# CODEBOOK SELECTION
-# codebook_list = glob.glob(os.path.join(CONFIG_DIR, 'codebook*.yaml'))
-# codebook_options = [os.path.basename(p) for p in codebook_list]
+# ========================= LOAD DATA & CODEBOOK =========================
+try:
+    # Detect dataset type from filename
+    dataset_type = detect_dataset_type(DATA_PATH)
 
-# if not codebook_options:
-#     st.error("No codebook files found in config directory.")
-#     st.stop()
-status = 0
-# selected_codebook_name = st.sidebar.selectbox("Select Codebook", codebook_options)
-CODEBOOK_PATH = os.path.join(CONFIG_DIR, 'codebook.yaml')
+    # Load codebook
+    codebook = load_codebook(CODEBOOK_PATH)
+    codebook_sel = get_codebook_section(codebook, dataset_type)
 
-#========================= MAIN =========================
-@st.cache_data
-def load_codebook(CODEBOOK_PATH):
-    codebook = yaml.safe_load(open(CODEBOOK_PATH, 'r', encoding='utf-8'))
-    return codebook
+    # Get Chinese column mappings
+    chinese_columns = get_chinese_columns(codebook_sel)
+
+    # Load and decode data
+    df = load_data(DATA_PATH)
+    df_decode = decode_data(df, codebook_sel)
+
+    # st.success(f"✅ 成功載入資料集：{dataset_type}")
+
+except Exception as e:
+    st.error(f"❌ 載入資料時發生錯誤：{str(e)}")
+    st.stop()
 
 
-@st.cache_data(ttl=1800, max_entries=3)
-def load_data(DATA_PATH):
-    # 預設每欄都是 str，除了 CNT
-    df = pd.read_parquet(DATA_PATH, engine='pyarrow')
-    return df
+# ========================= UI CONTROLS =========================
 
-@st.cache_data
-def get_decoded_data(df, codebook):
-    df_decode = df.copy()
-    for col in codebook.keys():
-        if col in df_decode.columns:
-            df_decode[col] = df_decode[col].replace(codebook[col]['codes'])
-    return df_decode
+# Render pivot dimension selectors
+pivot_row, pivot_col, pivot_sum = render_pivot_selector(chinese_columns)
 
-def fet_chinese_columns(codebook):
-    chinese_columns = {}
-    for col in codebook.keys():
-        chinese_columns[col] = codebook[col]['name']
-    return chinese_columns
+# Render filter sidebar
+render_filter_sidebar(df_decode, chinese_columns)
 
-def get_label(key):
-    return chinese_columns.get(key, key)
+# Render visual settings
+axis = render_visual_settings()
 
-@st.cache_data
-def compute_all_pivots(df_decode, pivot_row, pivot_col, pivot_sum, filter_items, codebook_mappings):
-    """
-    Computes all yearly pivot tables and summary statistics.
-    filter_items: Tuple of (col, tuple(sorted_values)) for hashability.
-    """
-    unique_years = [int(yr) for yr in df_decode['DATA_YR'].unique() if not pd.isna(yr)]
-    unique_years = sorted(unique_years, reverse=True)
-    
-    results = {}
-    col_totals_year = []
-    row_totals_year = []
-    all_totals_year = []
-    
-    # Convert tuple back to dict for easy lookup
-    active_filters = {k: v for k, v in filter_items}
 
-    for data_yr in unique_years:
-        # Start from base decoded DF
-        df_year = df_decode.copy()
-        
-        # Apply Filters
-        for col in df_decode.columns[1:-1]:
-            if col in active_filters:
-                df_year = df_year[df_year[col].isin(active_filters[col])]
-            elif col == pivot_row or col == pivot_col:
-                df_year = df_year[~df_year[col].isna()]
-            else:
-                df_year = df_year[df_year[col].isna()]
-        
-        df_year = df_year[df_year['DATA_YR'] == data_yr].copy()
-        
-        if df_year.empty:
-            results[data_yr] = None
-            continue
+# ========================= VALIDATION =========================
+# Check if user selected same dimension for row and column
+if pivot_row == pivot_col:
+    st.info("🔼 請選擇不同的交叉維度")
+    st.stop()
 
-        pivot_table = df_year.pivot_table(index=pivot_row, columns=pivot_col, values=pivot_sum, aggfunc='sum')
 
-        # Sort Logic
+# ========================= QUERY EXECUTION =========================
+if st.button("查詢", type="primary"):
+    with st.spinner("正在計算樞紐分析表..."):
         try:
-            # 1. Row Order
-            if pivot_row in codebook_mappings:
-                codes = codebook_mappings[pivot_row]['codes']
-                sorted_keys = sorted([k for k in codes.keys() if isinstance(k, int) or str(k).isdigit()])
-                sorted_labels = [codes[k] for k in sorted_keys]
-                sorted_labels = list(dict.fromkeys(sorted_labels)) # Dedup
-                current_labels = pivot_table.index.tolist()
-                final_row_order = [lbl for lbl in sorted_labels if lbl in current_labels] + [lbl for lbl in current_labels if lbl not in sorted_labels]
-                pivot_table = pivot_table.reindex(index=final_row_order)
+            # Prepare filters for caching (hashable tuple)
+            current_filter_items = []
+            for col in df_decode.columns[1:-1]:
+                if col in st.session_state and st.session_state[col]:
+                    current_filter_items.append(
+                        (col, tuple(sorted(st.session_state[col])))
+                    )
+            current_filter_items = tuple(sorted(current_filter_items))
 
-            # 2. Col Order
-            if pivot_col in codebook_mappings:
-                codes = codebook_mappings[pivot_col]['codes']
-                sorted_keys = sorted([k for k in codes.keys() if isinstance(k, int) or str(k).isdigit()])
-                sorted_labels = [codes[k] for k in sorted_keys]
-                sorted_labels = list(dict.fromkeys(sorted_labels)) # Dedup
-                current_labels = pivot_table.columns.tolist()
-                final_col_order = [lbl for lbl in sorted_labels if lbl in current_labels] + [lbl for lbl in current_labels if lbl not in sorted_labels]
-                pivot_table = pivot_table.reindex(columns=final_col_order)
-        except Exception:
-            pass # Sort failed, keep original
+            # Compute pivot tables
+            unique_years, results, row_totals_year, col_totals_year, all_totals_year = (
+                compute_pivot_tables(
+                    df_decode,
+                    pivot_row,
+                    pivot_col,
+                    pivot_sum,
+                    current_filter_items,
+                    codebook_sel,
+                )
+            )
 
-        # fill zero
-        pivot_table = pivot_table.fillna(0)
-        # Add Grand Totals
-        pivot_table.loc['全國'] = pivot_table.sum()
-        pivot_table.loc[:, '全國'] = pivot_table.sum(axis=1)
+            # Check if we have any results
+            if not results or all(v is None for v in results.values()):
+                st.warning("⚠️ 沒有符合篩選條件的資料。請調整篩選條件。")
+                st.stop()
 
-        # Calculate Percentages
-        pivot_table_row = pivot_table.div(pivot_table['全國'], axis=0)
-        pivot_table_col = pivot_table.div(pivot_table.loc['全國'], axis=1)
-        pivot_table_total = pivot_table / pivot_table.loc['全國', '全國']
-        
-        results[data_yr] = {
-            'pivot': pivot_table,
-            'row_pct': pivot_table_row,
-            'col_pct': pivot_table_col,
-            'total_pct': pivot_table_total
-        }
+            # Render pivot table tabs
+            st.subheader("樞紐分析表")
+            render_pivot_tabs(unique_years, results, axis)
 
-        # For comparison
-        row_totals_year.append({'DATA_YR': data_yr, **pivot_table['全國'].to_dict()})
-        col_totals_year.append({'DATA_YR': data_yr, **pivot_table.loc['全國'].to_dict()})
-        all_totals_year.append([data_yr, pivot_table.loc['全國', '全國']])
-        
-    return unique_years, results, row_totals_year, col_totals_year, all_totals_year
+            # Calculate growth rates
+            overall_growth_df, row_growth_df, col_growth_df = calculate_growth_rates(
+                row_totals_year, col_totals_year, all_totals_year
+            )
 
-#========================= OUTPUT =========================
-# Load data
-codebook = load_codebook(CODEBOOK_PATH) # 整本
-dataset_sel = CODEBOOK_MAPPING[prefix] # 依資料集選定
-codebook_sel = codebook[dataset_sel]
-chinese_columns = fet_chinese_columns(codebook_sel)
-df = load_data(DATA_PATH)
-df_decode = get_decoded_data(df, codebook_sel)
+            # Render growth analysis
+            render_growth_analysis(
+                overall_growth_df, row_growth_df, col_growth_df, pivot_row, pivot_col
+            )
 
-status = 1
-# PIVOT_TABLE
-# ROW
-# COL
-# SUM
-pivot_row, pivot_col, pivot_sum = st.columns(3)
+            st.success("✅ 分析完成！")
 
-# config: row
-opts = chinese_columns.keys()
-p_row = pivot_row.selectbox("列維度(Row)", opts, format_func=get_label, key="pivot_row") 
+        except Exception as e:
+            st.error(f"❌ 計算時發生錯誤：{str(e)}")
+            import traceback
 
-# config: col
-p_col = pivot_col.selectbox("欄維度(Column)", opts, format_func=get_label, key="pivot_col") 
-
-# config: sum
-# opts_sum = chinese_columns.keys()[-1:] # usually just 'CNT' or last col
-p_sum = pivot_sum.selectbox("計算欄", 'CNT', key="pivot_sum") 
-
-# 製作篩選器（複選）
-st.sidebar.header("Filters")
-for col in df_decode.columns[1:-1]:
-    st.sidebar.multiselect(get_label(col), df_decode[col].unique(), key=col)
-
-# 視覺化設定，表格顏色標記: None, 0, 1
-st.sidebar.header("Visual Settings")
-check_visual_axis = st.sidebar.radio("視覺化比較軸向", ["全表", "直向", "橫向"], index=0, horizontal=True)
-axis_options = {
-    "全表": None,   # 適合：找全域最大/最小值
-    "直向": 0,         # 適合：比較同一月份各縣市的表現
-    "橫向": 1          # 適合：比較同一縣市不同坪數的分布
-}
-axis = axis_options[check_visual_axis]
-
-if st.session_state['pivot_row'] == st.session_state['pivot_col']:
-    st.warning('🔼 請選擇不同的交叉維度')
-else:
-    status = 2
-
-if status == 2 and st.button('查詢', type='primary'):
-    # Prepare filters for caching (hashable tuple)
-    current_filter_items = []
-    for col in df_decode.columns[1:-1]:
-        if col in st.session_state and st.session_state[col]:
-            current_filter_items.append((col, tuple(sorted(st.session_state[col]))))
-    current_filter_items = tuple(sorted(current_filter_items))
-
-    # Compute
-    unique_years, results, row_totals_year, col_totals_year, all_totals_year = compute_all_pivots(
-        df_decode, 
-        st.session_state['pivot_row'], 
-        st.session_state['pivot_col'], 
-        st.session_state['pivot_sum'], 
-        current_filter_items,
-        codebook_sel
-    )
-
-    # Render
-    tabs = st.tabs([str(yr) for yr in unique_years])
-    for i, data_yr in enumerate(unique_years):
-        with tabs[i]:
-            res = results.get(data_yr)
-            if res is None:
-                st.warning(f"No data for {data_yr} with current filters.")
-                continue
-
-            pivot_table = res['pivot']
-            pivot_table_row = res['row_pct']
-            pivot_table_col = res['col_pct']
-            pivot_table_total = res['total_pct']
-
-            sub_tab1, sub_tab2, sub_tab3, sub_tab4 = st.tabs(["Pivot Table", "Row(%)", "Col(%)", "Total(%)"])
-            dynamic_height = int((len(pivot_table) * 35) + 37)
-            # Re-calculate gradients for display
-            gradient_columns = [col for col in pivot_table.columns if col != '全國']
-            gradient_rows = [idx for idx in pivot_table.index if idx != '全國']
-            
-            with sub_tab1:
-                st.dataframe(pivot_table.style.background_gradient(
-                            subset=(gradient_rows, gradient_columns), 
-                            cmap='Blues',
-                            axis=axis
-                        ).format("{:,.0f}"), height=dynamic_height)
-            with sub_tab2:
-                st.dataframe(pivot_table_row.style.background_gradient(
-                            subset=(gradient_rows, gradient_columns), 
-                            cmap='Blues',
-                            axis=axis
-                        ).format("{:.2%}"), height=dynamic_height)
-            with sub_tab3:
-                st.dataframe(pivot_table_col.style.background_gradient(
-                            subset=(gradient_rows, gradient_columns), 
-                            cmap='Blues',
-                            axis=axis
-                        ).format("{:.2%}"), height=dynamic_height)
-            with sub_tab4:
-                st.dataframe(pivot_table_total.style.background_gradient(
-                            subset=(gradient_rows, gradient_columns), 
-                            cmap='Blues',
-                            axis=axis
-                        ).format("{:.2%}"), height=dynamic_height)
-
-    # 比較年增狀況
-    st.markdown("### 年增率分析")
-    growth_tabs = st.tabs(["總體", "列(Row)維度", "欄(Col)維度"])
-
-    with growth_tabs[0]:
-        # 計算平均年增率
-        if all_totals_year:
-            all_totals_year_df = pd.DataFrame(all_totals_year, columns=['DATA_YR', 'TOTAL'])
-            all_totals_year_df['DATA_YR'] = pd.to_numeric(all_totals_year_df['DATA_YR'])
-            all_totals_year_df['TOTAL'] = pd.to_numeric(all_totals_year_df['TOTAL'])
-            all_totals_year_df = all_totals_year_df.sort_values(by='DATA_YR')
-            all_totals_year_df['YEARLY_GROWTH'] = all_totals_year_df['TOTAL'].pct_change()
-            all_totals_year_df['YEARLY_GROWTH'] = all_totals_year_df['YEARLY_GROWTH'].fillna(0)
-            all_totals_year_df['YEARLY_GROWTH_PCT'] = all_totals_year_df['YEARLY_GROWTH'] * 100
-            
-            col_metric1, col_metric2 = st.columns(2)
-            col_metric1.metric("平均年增率", f'{all_totals_year_df["YEARLY_GROWTH_PCT"].mean():.2f}%')
-            col_metric2.metric("最新年增率", f'{all_totals_year_df["YEARLY_GROWTH_PCT"].iloc[-1]:.2f}%')
-            
-            st.dataframe(all_totals_year_df[['DATA_YR', 'TOTAL', 'YEARLY_GROWTH_PCT']].style.format({"TOTAL": "{:,.0f}", "YEARLY_GROWTH_PCT": "{:,.2f}%"}))
-
-    with growth_tabs[1]:
-        if row_totals_year:
-            row_growth_df = pd.DataFrame(row_totals_year)
-            row_growth_df['DATA_YR'] = pd.to_numeric(row_growth_df['DATA_YR'])
-            row_growth_df = row_growth_df.sort_values(by='DATA_YR').set_index('DATA_YR')
-            # Calculate pct change
-            row_pct_df = row_growth_df.pct_change() * 100
-            # row_pct_df = row_pct_df.fillna(0) # pct_change first row is NaN
-            row_pct_df = row_pct_df.iloc[1:]
-            st.write(f"列維度 ({st.session_state['pivot_row']}) 年增率 (%):")
-            st.dataframe(row_pct_df.style.format("{:,.2f}%").background_gradient(cmap='RdYlBu', vmin=-10, vmax=10))
-
-    with growth_tabs[2]:
-        if col_totals_year:
-            col_growth_df = pd.DataFrame(col_totals_year)
-            col_growth_df['DATA_YR'] = pd.to_numeric(col_growth_df['DATA_YR'])
-            col_growth_df = col_growth_df.sort_values(by='DATA_YR').set_index('DATA_YR')
-            # Calculate pct change
-            col_pct_df = col_growth_df.pct_change() * 100
-            # col_pct_df = col_pct_df.fillna(0)
-            col_pct_df = col_pct_df.iloc[1:]
-            st.write(f"欄維度 ({st.session_state['pivot_col']}) 年增率 (%):")
-            st.dataframe(col_pct_df.style.format("{:,.2f}%").background_gradient(cmap='RdYlBu', vmin=-10, vmax=10))
+            with st.expander("詳細錯誤訊息"):
+                st.code(traceback.format_exc())
