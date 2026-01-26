@@ -1,0 +1,9 @@
+services:
+  streamlit_app:
+    build: .
+    ports:
+      - "8502:8501"
+    volumes:
+      - .:/app
+    environment:
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
