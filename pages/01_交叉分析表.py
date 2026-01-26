@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 import re
+import pyarrow
 
 
 st.set_page_config(page_title="Playground", page_icon="🏠", layout="wide", initial_sidebar_state="expanded")
@@ -74,7 +75,16 @@ else:
 
 # 確認檔案的前綴
 reg_pat = r'^(.*)_coded'
-prefix = re.search(reg_pat, os.path.basename(DATA_PATH)).group(1)
+try:
+    match = re.search(reg_pat, os.path.basename(DATA_PATH))
+    if not match:
+        st.error(f"檔案名稱格式錯誤: {os.path.basename(DATA_PATH)}")
+        st.stop()
+    prefix = match.group(1)
+except Exception as e:
+    st.error(f"處理檔案時發生錯誤: {str(e)}")
+    st.stop()
+
 CODEBOOK_MAPPING = {
     '稅電': 'codebook_power.yaml',
     '所有權': 'codebook_own.yaml',
@@ -96,7 +106,7 @@ CODEBOOK_PATH = os.path.join(CONFIG_DIR, CODEBOOK_MAPPING[prefix])
 codebook = yaml.safe_load(open(CODEBOOK_PATH, 'r', encoding='utf-8'))
 
 #========================= MAIN =========================
-@st.cache_data
+@st.cache_data(ttl=1800, max_entries=3)
 def load_data(DATA_PATH):
     df = pd.read_parquet(DATA_PATH, engine='pyarrow')
     return df
@@ -104,7 +114,7 @@ def load_data(DATA_PATH):
 df = load_data(DATA_PATH)
 
 @st.cache_data
-def get_decoded_data(df, codebook):
+def get_decoded_data(df, _codebook):
     df_decode = df.copy()
     for col in codebook['mappings'].keys():
         if col in df_decode.columns:
@@ -114,8 +124,6 @@ def get_decoded_data(df, codebook):
 df_decode = get_decoded_data(df, codebook)
 
 #========================= OUTPUT =========================
-# 以 df_decode 做為基礎，製作篩選器讓用戶選，預選 NULL
-df_filter = df_decode.copy()
 
 # Defaults from config
 def_row = app_settings.get('settings', {}).get('defaults', {}).get('row_dim', None)
