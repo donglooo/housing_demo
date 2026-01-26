@@ -38,18 +38,39 @@ def compute_pivot_tables(
         - col_totals_year: List of dicts with column totals per year
         - all_totals_year: List of [year, total] pairs
     """
-    unique_years = [int(yr) for yr in df_decode["DATA_YR"].unique() if not pd.isna(yr)]
-    unique_years = sorted(unique_years, reverse=True)
+    #1. 進行全域篩選
+    active_filters = {k: v for k,v in filter_items}
+    
+    df_all_years = apply_filters(df_decode, active_filters, pivot_row, pivot_col)
 
+    # Filter out null years
+    unique_years = sorted(
+        [int(y) for y in df_all_years["DATA_YR"].unique() if not pd.isna(y)],
+        reverse=True
+    )
+
+    super_pivot = df_all_years.pivot_table(
+        index=["DATA_YR", pivot_row],
+        columns=pivot_col,
+        values=pivot_sum,
+        aggfunc="sum"
+    ).fillna(0)
+
+    #2. 進行年別篩選
     results = {}
     col_totals_year = []
     row_totals_year = []
     all_totals_year = []
 
     # Convert tuple back to dict for easy lookup
-    active_filters = {k: v for k, v in filter_items}
+    # active_filters = {k: v for k, v in filter_items}
 
     for data_yr in unique_years:
+        try:
+            pivot_table = super_pivot.xs(data_yr, level="DATA_YR").copy()
+        except KeyError:
+            results[data_yr] = None
+            continue
         # Apply filters for this year
         df_year = apply_filters(
             df_decode, active_filters, pivot_row, pivot_col, data_yr
@@ -68,7 +89,7 @@ def compute_pivot_tables(
         pivot_table = sort_pivot_table(pivot_table, pivot_row, pivot_col, codebook)
 
         # Fill NaN with 0
-        pivot_table = pivot_table.fillna(0)
+        # pivot_table = pivot_table.fillna(0)
 
         # Add totals
         pivot_table = add_totals(pivot_table)
@@ -115,24 +136,30 @@ def apply_filters(
     Returns:
         Filtered DataFrame
     """
-    df_filtered = df.copy()
+    mask = pd.Series(True, index=df.index) #建立初始全為True之遮罩
+    target_columns = df.columns[1:-1]      #定義處裡欄位範圍
+    unused_cols = []
+    # df_filtered = df.copy()
 
     # Apply user-selected filters
-    for col in df.columns[1:-1]:
+    for col in target_columns:
         if col in filters:
-            df_filtered = df_filtered[df_filtered[col].isin(filters[col])]
+            mask &= df[col].isin(filters[col])
         elif col == pivot_row or col == pivot_col:
             # Pivot dimensions must not be null
-            df_filtered = df_filtered[~df_filtered[col].isna()]
+            mask &= ~df[col].isna()
         else:
             # Other columns must be null (not selected)
-            df_filtered = df_filtered[df_filtered[col].isna()]
+            unused_cols.append(col)
+
+    if unused_cols:
+        mask &= df[unused_cols].isna().all(axis=1)
 
     # Filter by year if provided
     if data_yr is not None:
-        df_filtered = df_filtered[df_filtered["DATA_YR"] == data_yr]
+        mask &= df["DATA_YR"] == data_yr
 
-    return df_filtered
+    return df.loc[mask].copy()
 
 
 def sort_pivot_table(
