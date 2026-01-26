@@ -132,7 +132,6 @@ if st.button("查詢", type="primary"):
                 st.stop()
 
             # Render pivot table tabs
-            st.subheader("樞紐分析表")
             render_pivot_tabs(unique_years, results, axis)
 
             # Calculate growth rates
