@@ -154,7 +154,7 @@ p_col = pivot_col.selectbox("欄維度(Column)", opts, format_func=get_label, ke
 
 # config: sum
 # opts_sum = chinese_columns.keys()[-1:] # usually just 'CNT' or last col
-p_sum = pivot_sum.selectbox("計算欄", 'CNT', key="pivot_sum") 
+p_sum = 'CNT'#pivot_sum.selectbox("計算欄", , key="pivot_sum") 
 
 # 製作篩選器（複選）
 st.sidebar.header("Filters")
