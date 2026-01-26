@@ -10,6 +10,27 @@ import pandas as pd
 from typing import Dict, List, Optional
 
 
+@st.cache_data
+def get_unique_values(df: pd.DataFrame) -> Dict[str, List]:
+    """
+    Get unique values for all columns in the DataFrame with caching.
+    
+    This avoids recalculating .unique() on large DataFrames on every
+    script rerun, which is a major performance bottleneck.
+
+    Args:
+        df: Input DataFrame
+
+    Returns:
+        Dict mapping column names to sorted list of unique values
+    """
+    unique_vals = {}
+    for col in df.columns:
+        # Filter out NaN/None values and sort
+        unique_vals[col] = sorted([x for x in df[col].unique() if pd.notna(x)])
+    return unique_vals
+
+
 def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
     """
     Render row/column/sum selector controls.
@@ -58,8 +79,12 @@ def render_filter_sidebar(
     def get_label(key):
         return chinese_columns.get(key, key)
 
+    # Get cached unique values to prevent reloading entire column data
+    unique_values = get_unique_values(df_decode)
+
     for col in df_decode.columns[1:-1]:
-        st.sidebar.multiselect(get_label(col), df_decode[col].unique(), key=col)
+        opts = unique_values.get(col, [])
+        st.sidebar.multiselect(get_label(col), opts, key=col)
 
 
 def render_visual_settings() -> Optional[int]:
