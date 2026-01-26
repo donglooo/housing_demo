@@ -66,7 +66,7 @@ else:
 # Allow relative path in config being resolved to absolute
 # select data from dropdown: data\*\*.csv
 file_list = glob.glob(os.path.join(DATA_DIR, '**', '*.parquet'))
-raw_data_path = st.selectbox("Select Data", file_list)
+raw_data_path = st.selectbox("選擇資料集", file_list)
 
 if not os.path.isabs(raw_data_path):
     DATA_PATH = os.path.join(BASE_DIR, raw_data_path)
@@ -102,7 +102,6 @@ CODEBOOK_MAPPING = {
 status = 0
 # selected_codebook_name = st.sidebar.selectbox("Select Codebook", codebook_options)
 CODEBOOK_PATH = os.path.join(CONFIG_DIR, CODEBOOK_MAPPING[prefix])
-
 codebook = yaml.safe_load(open(CODEBOOK_PATH, 'r', encoding='utf-8'))
 
 #========================= MAIN =========================
@@ -110,8 +109,6 @@ codebook = yaml.safe_load(open(CODEBOOK_PATH, 'r', encoding='utf-8'))
 def load_data(DATA_PATH):
     df = pd.read_parquet(DATA_PATH, engine='pyarrow')
     return df
-
-df = load_data(DATA_PATH)
 
 @st.cache_data
 def get_decoded_data(df, _codebook):
@@ -121,21 +118,25 @@ def get_decoded_data(df, _codebook):
             df_decode[col] = df_decode[col].replace(codebook['mappings'][col]['codes'])
     return df_decode
 
-df_decode = get_decoded_data(df, codebook)
+def fet_chinese_columns(codebook):
+    chinese_columns = {}
+    for col in codebook['mappings'].keys():
+        # chinese_columns[codebook['mappings'][col]['name']] = col
+        chinese_columns[col] = codebook['mappings'][col]['name']
+    return chinese_columns
+
+def get_label(key):
+    return chinese_columns.get(key, key)
 
 #========================= OUTPUT =========================
-
+# Load data
+chinese_columns = fet_chinese_columns(codebook)
+df = load_data(DATA_PATH)
+df_decode = get_decoded_data(df, codebook)
 # Defaults from config
 def_row = app_settings.get('settings', {}).get('defaults', {}).get('row_dim', None)
 def_col = app_settings.get('settings', {}).get('defaults', {}).get('col_dim', None)
 def_sum = app_settings.get('settings', {}).get('defaults', {}).get('sum_metric', None)
-
-# Helper to find index
-def get_index(options, value):
-    try:
-        return list(options).index(value)
-    except ValueError:
-        return 0
 
 status = 1
 # PIVOT_TABLE
@@ -145,21 +146,20 @@ status = 1
 pivot_row, pivot_col, pivot_sum = st.columns(3)
 
 # config: row
-opts_row = df_decode.columns[1:-1]
-p_row = pivot_row.selectbox("PIVOT ROW", opts_row, index=get_index(opts_row, def_row), key="pivot_row") 
+opts = chinese_columns.keys()
+p_row = pivot_row.selectbox("列維度(Row)", opts, format_func=get_label, key="pivot_row") 
 
 # config: col
-opts_col = df_decode.columns[1:-1]
-p_col = pivot_col.selectbox("PIVOT COL", opts_col, index=get_index(opts_col, def_col), key="pivot_col") 
+p_col = pivot_col.selectbox("欄維度(Column)", opts, format_func=get_label, key="pivot_col") 
 
 # config: sum
-opts_sum = df_decode.columns[-1:] # usually just 'CNT' or last col
-p_sum = pivot_sum.selectbox("PIVOT SUM", df_decode.columns[2:], index=get_index(df_decode.columns[2:], def_sum), key="pivot_sum") 
+# opts_sum = chinese_columns.keys()[-1:] # usually just 'CNT' or last col
+p_sum = pivot_sum.selectbox("計算欄", 'CNT', key="pivot_sum") 
 
 # 製作篩選器（複選）
 st.sidebar.header("Filters")
 for col in df_decode.columns[1:-1]:
-    st.sidebar.multiselect(col, df_decode[col].unique(), key=col)
+    st.sidebar.multiselect(get_label(col), df_decode[col].unique(), key=col)
 
 # 視覺化設定，表格顏色標記: None, 0, 1
 st.sidebar.header("Visual Settings")
