@@ -38,25 +38,22 @@ def compute_pivot_tables(
         - col_totals_year: List of dicts with column totals per year
         - all_totals_year: List of [year, total] pairs
     """
-    #1. 進行全域篩選
-    active_filters = {k: v for k,v in filter_items}
-    
+    # 1. 進行全域篩選
+    active_filters = {k: v for k, v in filter_items}
+
     df_all_years = apply_filters(df_decode, active_filters, pivot_row, pivot_col)
 
     # Filter out null years
     unique_years = sorted(
         [int(y) for y in df_all_years["DATA_YR"].unique() if not pd.isna(y)],
-        reverse=True
+        reverse=True,
     )
 
     super_pivot = df_all_years.pivot_table(
-        index=["DATA_YR", pivot_row],
-        columns=pivot_col,
-        values=pivot_sum,
-        aggfunc="sum"
+        index=["DATA_YR", pivot_row], columns=pivot_col, values=pivot_sum, aggfunc="sum"
     ).fillna(0)
 
-    #2. 進行年別篩選
+    # 2. 進行年別篩選
     results = {}
     col_totals_year = []
     row_totals_year = []
@@ -136,8 +133,8 @@ def apply_filters(
     Returns:
         Filtered DataFrame
     """
-    mask = pd.Series(True, index=df.index) #建立初始全為True之遮罩
-    target_columns = df.columns[1:-1]      #定義處裡欄位範圍
+    mask = pd.Series(True, index=df.index)  # 建立初始全為True之遮罩
+    target_columns = df.columns[1:-1]  # 定義處裡欄位範圍
     unused_cols = []
     # df_filtered = df.copy()
 
