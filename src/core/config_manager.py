@@ -13,6 +13,10 @@ from typing import Dict, Tuple
 # Dataset prefix to codebook section mapping
 CODEBOOK_MAPPING = {"稅電": "power", "所有權": "ownership", "稅籍": "tax"}
 
+# Columns/Prefixes to exclude from generic filtering logic (Metrics/IDs)
+EXCLUDED_METRIC_PREFIXES = ("CNT_", "SUM_", "AVG_", "PCT_")
+EXCLUDED_METRIC_COLS = {"DATA_STATUS", "CNT", "GID", ""}
+
 
 def get_base_paths() -> Tuple[str, str, str]:
     """

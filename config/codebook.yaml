@@ -2,6 +2,8 @@ ownership:
   DATA_YR:
     name: "資料年度"
     dtype: "Int64"
+    group_type: "fixed"
+  
   COUNTY:
     name: "縣市"
     dtype: "category"
@@ -30,9 +32,22 @@ ownership:
       22: "連江縣"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    group_type: "rollup"
+
   TOWNSHIP:
     name: "行政區"
     dtype: "category"
+    group_type: "rollup"
+
+  OWNED_TYPE:
+    name: "歸戶類型"
+    dtype: "category"
+    codes:
+      11: "無人持有"
+      12: "單獨持有"
+      13: "多人持有"
+    group_type: "fixed"
+
   TOT_AREA_PING_GROUP:
     name: "坪數區間"
     dtype: "Int64"
@@ -52,6 +67,7 @@ ownership:
       23: "70坪以上"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   BUILDING_AGE_GROUP:
     name: "屋齡區間"
@@ -69,6 +85,7 @@ ownership:
       20: "50年以上"
       98: "資料異常(小於0)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   MATERIALS_GROUP_NEW:
     name: "構造別"
@@ -80,6 +97,7 @@ ownership:
       14: "加強磚造"
       90: "其他"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   BUILDING_FLOOR_GROUP:
     name: "樓層區間"
@@ -93,6 +111,7 @@ ownership:
       16: "20層以上"
       98: "資料異常(0層以下)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   PURPOSE_GROUP:
     name: "使用類別"
@@ -104,6 +123,7 @@ ownership:
       4: "國有住宅"
       5: "其他"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   REGISTER_REASON_GROUP:
     name: "登記原因"
@@ -116,14 +136,7 @@ ownership:
       5: "拍賣"
       6: "其他"
       99: "資料缺失"
-
-  IS_OWNED:
-    name: "是否有所有權人"
-    dtype: "Int64"
-    codes:
-      0: "否"
-      1: "是"
-      99: "資料缺失"
+    group_type: "grouping_set"
 
 columns_order:
   - DATA_YR
@@ -141,6 +154,7 @@ tax:
   DATA_YR:
     name: "資料年度"
     dtype: "Int64"
+    group_type: "fixed"
  
   COUNTY:
     name: "縣市"
@@ -170,10 +184,12 @@ tax:
       22: "連江縣"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    group_type: "rollup"
 
   TOWN:
     name: "行政區"
     dtype: "category"
+    group_type: "rollup"
 
   AREA_ALL_SUM_PING_GROUP:
     name: "坪數區間"
@@ -194,6 +210,7 @@ tax:
       23: "70坪以上"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   HOU_DEPR_YEAR_OLD_GROUP:
     name: "屋齡區間"
@@ -211,6 +228,7 @@ tax:
       20: "50年以上"
       98: "資料異常(小於0)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   STRUC_MAX_GROUP:
     name: "構造別"
@@ -223,6 +241,7 @@ tax:
       90: "其他"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   HOU_FLOOR_MAX_GROUP:
     name: "樓層區間"
@@ -236,6 +255,7 @@ tax:
       16: "20層以上"
       98: "資料異常(0層以下)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
 columns_order:
   - DATA_YR
@@ -250,6 +270,7 @@ power:
   DATA_YR:
     name: "資料年度"
     dtype: "Int64"
+    group_type: "fixed"
 
   COUNTY:
     name: "縣市"
@@ -279,10 +300,12 @@ power:
       22: "連江縣"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    group_type: "rollup"
 
   TOWN:
     name: "行政區"
     dtype: "category"
+    group_type: "rollup"
 
   AREA_ALL_SUM_PING_GROUP:
     name: "坪數區間"
@@ -303,6 +326,7 @@ power:
       23: "70坪以上"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   HOU_DEPR_YEAR_OLD_GROUP:
     name: "屋齡區間"
@@ -320,6 +344,7 @@ power:
       20: "50年以上"
       98: "資料異常(小於0)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   STRUC_MAX_GROUP:
     name: "構造別"
@@ -332,6 +357,7 @@ power:
       90: "其他"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   HOU_FLOOR_MAX_GROUP:
     name: "樓層區間"
@@ -345,14 +371,17 @@ power:
       16: "20層以上"
       98: "資料異常(0層以下)"
       99: "資料缺失"
+    group_type: "grouping_set"
 
   POWER_TYPE:
     name: "是否低度用電"
     dtype: "Int64"
     codes:
-      0: "否"
-      1: "是"
-      99: "資料缺失"
+      0: "非低度用電(>60度)"
+      1: "低度用電(<=60度)"
+      98: "資料異常" # <0
+      99: "資料缺失" # Null
+    group_type: "rollup"
 
 columns_order:
   - DATA_YR

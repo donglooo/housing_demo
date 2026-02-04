@@ -9,6 +9,12 @@ import streamlit as st
 import pandas as pd
 from typing import Dict, List, Optional
 
+from src.core.config_manager import (
+    EXCLUDED_METRIC_PREFIXES,
+    EXCLUDED_METRIC_COLS,
+)
+
+
 
 @st.cache_data
 def get_unique_values(df: pd.DataFrame) -> Dict[str, List]:
@@ -87,16 +93,15 @@ def render_filter_sidebar(
     # Get cached unique values to prevent reloading entire column data
     unique_values = get_unique_values(df_decode)
 
-    # not like CNT_, SUM_, DATA_STATUS
+    # Define columns/prefixes to exclude from filters
+    # These are metrics (SUM, CNT, AVG) or identifiers (GID) or internal status (DATA_STATUS)
+    # now imported from config_manager
+
     filters = [
         col
         for col in df_decode.columns
-        if not col.startswith("CNT_")
-        and not col.startswith("SUM_")
-        and col != "DATA_STATUS"
-        and col != "CNT"
-        and col != "GID"
-        and col != ""
+        if not col.startswith(EXCLUDED_METRIC_PREFIXES)
+        and col not in EXCLUDED_METRIC_COLS
     ]
 
     for col in filters:
@@ -127,24 +132,70 @@ def render_visual_settings() -> Optional[int]:
 
 
 def render_pivot_tabs(
-    unique_years: List[int], results: Dict[int, Dict], axis: Optional[int]
+    unique_keys: List[any], 
+    results: Dict[any, Dict], 
+    axis: Optional[int],
+    masked_df: Optional[pd.DataFrame] = None,
+    pivot_tab_col: Optional[str] = None,
+    chinese_columns: Optional[Dict] = None
 ) -> None:
     """
-    Render yearly pivot table tabs with styling.
+    Render pivot table tabs with styling.
 
     Args:
-        unique_years: Sorted list of years
-        results: Dict mapping year to pivot results
+        unique_keys: Sorted list of tab keys (group values)
+        results: Dict mapping key to pivot results
         axis: Gradient axis (None, 0, or 1)
+        masked_df: Optional DataFrame containing masked data
+        pivot_tab_col: Column name identifying the tab dimension
+        chinese_columns: Mapping for column name display
     """
-    tabs = st.tabs([str(yr) for yr in unique_years])
+    tabs = st.tabs([str(k) for k in unique_keys])
 
-    for i, data_yr in enumerate(unique_years):
+    for i, tab_key in enumerate(unique_keys):
         with tabs[i]:
-            res = results.get(data_yr)
+            # --- Check and Display Masked Data for this Tab ---
+            if masked_df is not None and pivot_tab_col is not None and not masked_df.empty:
+                # Filter masked rows relevant to this tab
+                # Handle type mismatches carefully (convert to string if needed, or rely on pandas)
+                try:
+                    # Try direct comparison first
+                    local_masked = masked_df[masked_df[pivot_tab_col] == tab_key]
+                except Exception:
+                    # Fallback to string comparison
+                    local_masked = masked_df[masked_df[pivot_tab_col].astype(str) == str(tab_key)]
+
+                if not local_masked.empty:
+                    st.info("ℹ️ 此分組包含被遮蔽資料（樣本數小於 3 筆），詳細資訊如下：")
+                    with st.expander(f"查看共有 {len(local_masked)} 組被遮蔽的資料細節"):
+                         mask_details = []
+                         col_map = chinese_columns if chinese_columns else {}
+                         
+                         for idx, row in local_masked.iterrows():
+                            dims = []
+                            for col in local_masked.columns:
+                                if (
+                                    col not in EXCLUDED_METRIC_COLS 
+                                    and not str(col).startswith(EXCLUDED_METRIC_PREFIXES)
+                                    and pd.notna(row[col])
+                                ):
+                                     col_name = col_map.get(col, col)
+                                     val = row[col]
+                                     dims.append(f"{col_name}: {val}")
+                            
+                            if dims:
+                                mask_details.append(" | ".join(dims))
+                         
+                         if mask_details:
+                             st.write(mask_details)
+                         else:
+                             st.write("無法識別特定的維度組合")
+            # --------------------------------------------------
+
+            res = results.get(tab_key)
 
             if res is None:
-                st.warning(f"No data for {data_yr} with current filters.")
+                st.warning(f"No data for {tab_key} with current filters.")
                 continue
 
             pivot_table = res["pivot"]
@@ -153,16 +204,65 @@ def render_pivot_tabs(
             pivot_table_total = res["total_pct"]
 
             # Create sub-tabs for different views
-            sub_tab1, sub_tab2, sub_tab3, sub_tab4 = st.tabs(
-                ["Pivot Table", "Row(%)", "Col(%)", "Total(%)"]
+            sub_tab0, sub_tab1, sub_tab2, sub_tab3, sub_tab4 = st.tabs(
+                ["MIX", "Pivot Table", "Row(%)", "Col(%)", "Total(%)"]
             )
+
+            # --- Hybrid View Logic ---
+            with sub_tab0:
+                # 1. Prepare Base DataFrames
+                df_val = pivot_table.copy()
+                df_pct = pivot_table_row.copy()
+                
+                # 2. Interleave columns
+                # Move '全國' (Total) to front if exists
+                cols = [c for c in df_val.columns if c != "全國"]
+                
+                hybrid_df = pd.DataFrame(index=df_val.index)
+                
+                # Add Total column first
+                if "全國" in df_val.columns:
+                    hybrid_df["全國"] = df_val["全國"]
+                
+                # Interleave others
+                format_map = {}
+                # Add Total format
+                if "全國" in df_val.columns:
+                     format_map["全國"] = "{:,.0f}"
+
+                pct_cols = []
+                for c in cols:
+                    # Value Column
+                    val_col_name = f"{c}"
+                    hybrid_df[val_col_name] = df_val[c]
+                    format_map[val_col_name] = "{:,.0f}"
+                    
+                    # Pct Column
+                    pct_col_name = f"{c}(%)"
+                    hybrid_df[pct_col_name] = df_pct[c] 
+                    format_map[pct_col_name] = "{:.2%}"
+                    pct_cols.append(pct_col_name)
+
+                # 3. Display
+                # Define gradient subset
+                gradient_rows = [idx for idx in pivot_table.index if idx != "全國"]
+                
+                st.dataframe(
+                    hybrid_df.style.format(format_map)
+                    .background_gradient(
+                        subset=(gradient_rows, pct_cols), 
+                        cmap="Blues", 
+                        axis=axis
+                    ),
+                    height=int((len(hybrid_df) * 35) + 37)
+                )
 
             # Calculate dynamic height
             dynamic_height = int((len(pivot_table) * 35) + 37)
 
             # Exclude totals from gradient
             gradient_columns = [col for col in pivot_table.columns if col != "全國"]
-            gradient_rows = [idx for idx in pivot_table.index if idx != "全國"]
+            # gradient_rows already defined above
 
             with sub_tab1:
                 st.dataframe(

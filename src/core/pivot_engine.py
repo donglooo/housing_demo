@@ -9,6 +9,8 @@ import pandas as pd
 import streamlit as st
 from typing import Dict, List, Tuple, Optional
 
+from src.core.config_manager import EXCLUDED_METRIC_PREFIXES, EXCLUDED_METRIC_COLS
+
 
 @st.cache_data
 def compute_pivot_tables(
@@ -19,12 +21,13 @@ def compute_pivot_tables(
     pivot_sum: str,
     filter_items: Tuple[Tuple[str, Tuple], ...],
     codebook: Dict,
-) -> Tuple[List[int], Dict[int, Dict], List[Dict], List[Dict], List[List]]:
+) -> Tuple[List[int], Dict[int, Dict], List[Dict], List[Dict], List[List], bool]:
     """
-    Compute all yearly pivot tables and summary statistics.
+    Compute all pivot tables and summary statistics for each tab (group).
 
     Args:
         df_decode: Decoded DataFrame
+        pivot_tab: Column to group tabs by (e.g. DATA_YR, COUNTY)
         pivot_row: Row dimension column name
         pivot_col: Column dimension column name
         pivot_sum: Value column to sum
@@ -33,55 +36,73 @@ def compute_pivot_tables(
 
     Returns:
         Tuple of:
-        - unique_years: Sorted list of years
-        - results: Dict mapping year to pivot results
-        - row_totals_year: List of dicts with row totals per year
-        - col_totals_year: List of dicts with column totals per year
-        - all_totals_year: List of [year, total] pairs
+        - unique_tabs: Sorted list of tab keys
+        - results: Dict mapping tab key to pivot results
+        - row_totals_tab: List of dicts with row totals per tab
+        - col_totals_tab: List of dicts with column totals per tab
+        - all_totals_tab: List of [tab_key, total] pairs
+        - masked_df: DataFrame containing masked data rows
     """
     # 1. 進行全域篩選
     active_filters = {k: v for k, v in filter_items}
 
-    df_all_years = apply_filters(df_decode, active_filters, pivot_row, pivot_col)
+    df_all = apply_filters(df_decode, active_filters, pivot_tab, pivot_row, pivot_col, codebook=codebook)
 
-    # Filter out null years
-    unique_years = sorted(
-        [int(y) for y in df_all_years[pivot_tab].unique() if not pd.isna(y)],
-        reverse=True,
-    )
+    # Check for masked data
+    masked_df = pd.DataFrame()
+    if "DATA_STATUS" in df_all.columns:
+        masked_df = df_all[df_all["DATA_STATUS"] == "遮蔽"].copy()
 
-    super_pivot = df_all_years.pivot_table(
+    # Determine unique tab values and sort them
+    raw_tabs = [t for t in df_all[pivot_tab].unique() if not pd.isna(t)]
+
+    col_info = codebook.get(pivot_tab, {})
+    codes = col_info.get("codes", {})
+
+    if codes:
+        # Use codebook order (Label -> Code)
+        label_to_code = {v: k for k, v in codes.items()}
+        # Sort by code value
+        unique_tabs = sorted(raw_tabs, key=lambda x: label_to_code.get(x, float("inf")))
+    elif pivot_tab == "DATA_YR":
+        # Year default reverse sort
+        unique_tabs = sorted(raw_tabs, reverse=True)
+    else:
+        # Default smart sort (numeric if possible, else string)
+        try:
+             unique_tabs = sorted(
+                raw_tabs,
+                key=lambda x: float(x) if str(x).replace(".", "").isdigit() else str(x),
+                reverse=False
+            )
+        except Exception:
+            unique_tabs = sorted(raw_tabs)
+
+    super_pivot = df_all.pivot_table(
         index=[pivot_tab, pivot_row], columns=pivot_col, values=pivot_sum, aggfunc="sum"
     ).fillna(0)
 
-    # 2. 進行年別篩選
+    # 2. 進行分頁篩選
     results = {}
-    col_totals_year = []
-    row_totals_year = []
-    all_totals_year = []
+    col_totals_tab = []
+    row_totals_tab = []
+    all_totals_tab = []
 
-    # Convert tuple back to dict for easy lookup
-    # active_filters = {k: v for k, v in filter_items}
-
-    for data_yr in unique_years:
+    for tab_val in unique_tabs:
         try:
-            pivot_table = super_pivot.xs(data_yr, level=pivot_tab).copy()
+            pivot_table = super_pivot.xs(tab_val, level=pivot_tab).copy()
         except KeyError:
-            results[data_yr] = None
-            continue
-        # Apply filters for this year
-        df_year = apply_filters(
-            df_decode, active_filters, pivot_row, pivot_col, data_yr
-        )
-
-        if df_year.empty:
-            results[data_yr] = None
+            results[tab_val] = None
             continue
 
-        # Create pivot table
-        pivot_table = df_year.pivot_table(
-            index=pivot_row, columns=pivot_col, values=pivot_sum, aggfunc="sum"
-        )
+        # Create pivot table (already have it from xs, but re-applying specific filters for safety/consistency if needed?)
+        # Actually super_pivot handles the aggregation.
+        # But wait, super_pivot computed based on df_all which applied generic filters.
+        # So we can just use the slice.
+
+        # Ensure we filter properly if apply_filters does something dynamic?
+        # apply_filters is static based on active_filters.
+        # So super_pivot is correct.
 
         # Sort pivot table using codebook
         pivot_table = sort_pivot_table(pivot_table, pivot_row, pivot_col, codebook)
@@ -97,21 +118,19 @@ def compute_pivot_tables(
             pivot_table
         )
 
-        results[data_yr] = {
+        results[tab_val] = {
             "pivot": pivot_table,
             "row_pct": pivot_table_row,
             "col_pct": pivot_table_col,
             "total_pct": pivot_table_total,
         }
 
-        # Store totals for year-over-year comparison
-        row_totals_year.append({pivot_tab: data_yr, **pivot_table["全國"].to_dict()})
-        col_totals_year.append(
-            {pivot_tab: data_yr, **pivot_table.loc["全國"].to_dict()}
-        )
-        all_totals_year.append([data_yr, pivot_table.loc["全國", "全國"]])
+        # Store totals for comparison (e.g. YOY, or just trend)
+        row_totals_tab.append({pivot_tab: tab_val, **pivot_table["全國"].to_dict()})
+        col_totals_tab.append({pivot_tab: tab_val, **pivot_table.loc["全國"].to_dict()})
+        all_totals_tab.append([tab_val, pivot_table.loc["全國", "全國"]])
 
-    return unique_years, results, row_totals_year, col_totals_year, all_totals_year
+    return unique_tabs, results, row_totals_tab, col_totals_tab, all_totals_tab, masked_df
 
 
 def apply_filters(
@@ -120,7 +139,8 @@ def apply_filters(
     pivot_tab: str,
     pivot_row: str,
     pivot_col: str,
-    data_yr: Optional[int] = None,
+    tab_value: Optional[any] = None,
+    codebook: Optional[Dict] = None,
 ) -> pd.DataFrame:
     """
     Apply filter logic to DataFrame.
@@ -128,35 +148,67 @@ def apply_filters(
     Args:
         df: Source DataFrame
         filters: Dict of column -> selected values
-        pivot_row: Row dimension (must not be null)
-        pivot_col: Column dimension (must not be null)
-        data_yr: Year to filter (if provided)
+        pivot_tab: Tab dimension column name
+        pivot_row: Row dimension column name
+        pivot_col: Col dimension column name
+        tab_value: Optional value to filter pivot_tab by
+        codebook: Codebook dictionary for checking group_type
 
     Returns:
         Filtered DataFrame
     """
+
     mask = pd.Series(True, index=df.index)  # 建立初始全為True之遮罩
-    target_columns = df.columns[1:-1]  # 定義處裡欄位範圍
-    unused_cols = []
-    # df_filtered = df.copy()
+    
+    # Define columns/prefixes to exclude from dimension checks (metrics/IDs)
+    # Imported from config_manager
+    
+    # We should iterate over columns that are POTENTIAL DIMENSIONS.
+    # Exclude metrics.
+    
+    target_columns = [
+        col for col in df.columns 
+        if not col.startswith(EXCLUDED_METRIC_PREFIXES) 
+        and col not in EXCLUDED_METRIC_COLS
+    ]
+    
+    unused_cols_to_null = [] # Columns that must be null if not selected
 
     # Apply user-selected filters
     for col in target_columns:
         if col in filters:
             mask &= df[col].isin(filters[col])
+        if col == pivot_tab:
+             # Pivot tab dimension must not be null
+            mask &= ~df[col].isna()
         elif col == pivot_row or col == pivot_col:
-            # Pivot dimensions must not be null
+            # Pivot row/col dimensions must not be null
             mask &= ~df[col].isna()
         else:
-            # Other columns must be null (not selected)
-            unused_cols.append(col)
+            # Smart Probe Logic:
+            # Check if an aggregate row (where col is NaN) exists for the current context.
+            # If (mask & col.isna()).any() is True, it means the DB provides a pre-calculated aggregate.
+            # We should use it (Enforce NaN) to avoid double counting.
+            # If False, it means no aggregate exists (e.g. selecting a Child node in Rollup without selecting Parent),
+            # so we must aggregate manually (Enforce NotNa).
+            
+            # Note: We must check existence against the CURRENT mask (so far).
+            # But order matters? Ideally check against "If we enforced nothing on this col".
+            
+            probe_mask = mask & df[col].isna()
+            if probe_mask.any():
+                unused_cols_to_null.append(col)
+            else:
+                # No aggregate row found -> Sum the leaf nodes
+                mask &= df[col].notna()
 
-    if unused_cols:
-        mask &= df[unused_cols].isna().all(axis=1)
+    if unused_cols_to_null:
+        # All columns in unused_cols_to_null must be NaN for the row to be included
+        mask &= df[unused_cols_to_null].isna().all(axis=1)
 
-    # Filter by year if provided
-    if data_yr is not None:
-        mask &= df["DATA_YR"] == data_yr
+    # Filter by specific tab value if provided
+    if tab_value is not None:
+        mask &= df[pivot_tab] == tab_value
 
     return df.loc[mask].copy()
 
@@ -226,13 +278,31 @@ def add_totals(pivot: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Pivot table with "全國" totals added
     """
-    pivot_with_totals = pivot.copy()
+    # Calculate totals
+    row_sum = pivot.sum(axis=0)
+    col_sum = pivot.sum(axis=1)
+    grand_total = row_sum.sum()
 
-    # Add row total (全國)
-    pivot_with_totals.loc["全國"] = pivot_with_totals.sum()
+    # Reconstruct DataFrame with "全國" at the top/left
+    
+    # 1. Add "全國" to row_sum (for the top row)
+    row_sum["全國"] = grand_total
+    
+    # 2. Create new index with "全國" first
+    new_index = ["全國"] + [idx for idx in pivot.index]
+    new_columns = ["全國"] + [col for col in pivot.columns]
+    
+    # 3. Create new DF
+    pivot_with_totals = pd.DataFrame(index=new_index, columns=new_columns)
+    
+    # 4. Fill values
+    pivot_with_totals.loc["全國", "全國"] = grand_total
+    pivot_with_totals.loc["全國", pivot.columns] = row_sum[pivot.columns]
+    pivot_with_totals.loc[pivot.index, "全國"] = col_sum
+    pivot_with_totals.loc[pivot.index, pivot.columns] = pivot.values
 
-    # Add column total (全國)
-    pivot_with_totals.loc[:, "全國"] = pivot_with_totals.sum(axis=1)
+    # Ensure numeric types
+    pivot_with_totals = pivot_with_totals.apply(pd.to_numeric, errors='ignore')
 
     return pivot_with_totals
 
@@ -263,52 +333,86 @@ def calculate_percentages(
 
 
 def calculate_growth_rates(
-    row_totals_year: List[Dict],
-    col_totals_year: List[Dict],
-    all_totals_year: List[List],
+    row_totals_tab: List[Dict],
+    col_totals_tab: List[Dict],
+    all_totals_tab: List[List],
+    pivot_tab_name: str = "DATA_YR",
 ) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame], Optional[pd.DataFrame]]:
     """
-    Calculate year-over-year growth rates.
+    Calculate growth rates between tabs (only valid for numeric/time series).
 
     Args:
-        row_totals_year: List of row totals by year
-        col_totals_year: List of column totals by year
-        all_totals_year: List of [year, total] pairs
+        row_totals_tab: List of row totals by tab
+        col_totals_tab: List of column totals by tab
+        all_totals_tab: List of [tab_key, total] pairs
+        pivot_tab_name: Name of the tab grouping column. Defaults to "DATA_YR".
 
     Returns:
         Tuple of (overall_growth_df, row_growth_df, col_growth_df)
     """
+
+    # If pivot_tab is not numeric-like (e.g. DATA_YR), we might skip growth calc or just return differences?
+    # For now, let's try to enforce numeric conversion. If it fails, return None.
+
+    is_time_series = True
+    # check first element if possible
+    if all_totals_tab:
+        first_val = all_totals_tab[0][0]
+        try:
+            float(first_val)
+        except (ValueError, TypeError):
+            # Not a number, so growth rate (pct_change) doesn't imply time progression usually.
+            # But maybe user wants to compare categories? Pct change between categories is weird.
+            is_time_series = False
+
+    if not is_time_series and pivot_tab_name != "DATA_YR":
+        return None, None, None
+
     # Overall growth
     overall_growth_df = None
-    if all_totals_year:
-        overall_growth_df = pd.DataFrame(all_totals_year, columns=["DATA_YR", "TOTAL"])
-        overall_growth_df["DATA_YR"] = pd.to_numeric(overall_growth_df["DATA_YR"])
-        overall_growth_df["TOTAL"] = pd.to_numeric(overall_growth_df["TOTAL"])
-        overall_growth_df = overall_growth_df.sort_values(by="DATA_YR")
-        overall_growth_df["YEARLY_GROWTH"] = overall_growth_df["TOTAL"].pct_change()
-        overall_growth_df["YEARLY_GROWTH"] = overall_growth_df["YEARLY_GROWTH"].fillna(
-            0
+    if all_totals_tab:
+        overall_growth_df = pd.DataFrame(
+            all_totals_tab, columns=[pivot_tab_name, "TOTAL"]
         )
-        overall_growth_df["YEARLY_GROWTH_PCT"] = (
-            overall_growth_df["YEARLY_GROWTH"] * 100
-        )
+        try:
+            overall_growth_df[pivot_tab_name] = pd.to_numeric(
+                overall_growth_df[pivot_tab_name]
+            )
+            overall_growth_df["TOTAL"] = pd.to_numeric(overall_growth_df["TOTAL"])
+            overall_growth_df = overall_growth_df.sort_values(by=pivot_tab_name)
+            overall_growth_df["YEARLY_GROWTH"] = overall_growth_df["TOTAL"].pct_change()
+            overall_growth_df["YEARLY_GROWTH"] = overall_growth_df[
+                "YEARLY_GROWTH"
+            ].fillna(0)
+            overall_growth_df["YEARLY_GROWTH_PCT"] = (
+                overall_growth_df["YEARLY_GROWTH"] * 100
+            )
+        except Exception:
+            overall_growth_df = None
 
     # Row dimension growth
     row_growth_df = None
-    if row_totals_year:
-        row_df = pd.DataFrame(row_totals_year)
-        row_df["DATA_YR"] = pd.to_numeric(row_df["DATA_YR"])
-        row_df = row_df.sort_values(by="DATA_YR").set_index("DATA_YR")
-        row_growth_df = row_df.pct_change() * 100
-        row_growth_df = row_growth_df.iloc[1:]  # Remove first row (NaN)
+    if row_totals_tab:
+        try:
+            row_df = pd.DataFrame(row_totals_tab)
+            # Ensure pivot_tab column is numeric for sorting
+            row_df[pivot_tab_name] = pd.to_numeric(row_df[pivot_tab_name])
+            row_df = row_df.sort_values(by=pivot_tab_name).set_index(pivot_tab_name)
+            row_growth_df = row_df.pct_change() * 100
+            row_growth_df = row_growth_df.iloc[1:]  # Remove first row (NaN)
+        except Exception:
+            row_growth_df = None
 
     # Column dimension growth
     col_growth_df = None
-    if col_totals_year:
-        col_df = pd.DataFrame(col_totals_year)
-        col_df["DATA_YR"] = pd.to_numeric(col_df["DATA_YR"])
-        col_df = col_df.sort_values(by="DATA_YR").set_index("DATA_YR")
-        col_growth_df = col_df.pct_change() * 100
-        col_growth_df = col_growth_df.iloc[1:]  # Remove first row (NaN)
+    if col_totals_tab:
+        try:
+            col_df = pd.DataFrame(col_totals_tab)
+            col_df[pivot_tab_name] = pd.to_numeric(col_df[pivot_tab_name])
+            col_df = col_df.sort_values(by=pivot_tab_name).set_index(pivot_tab_name)
+            col_growth_df = col_df.pct_change() * 100
+            col_growth_df = col_growth_df.iloc[1:]  # Remove first row (NaN)
+        except Exception:
+            col_growth_df = None
 
     return overall_growth_df, row_growth_df, col_growth_df

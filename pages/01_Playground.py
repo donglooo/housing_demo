@@ -8,6 +8,7 @@ customizable pivot tables with filtering and year-over-year analysis.
 import streamlit as st
 import glob
 import os
+import pandas as pd
 
 # Import core modules
 from src.core.config_manager import (
@@ -15,6 +16,8 @@ from src.core.config_manager import (
     resolve_data_path,
     detect_dataset_type,
     get_codebook_section,
+    EXCLUDED_METRIC_COLS,
+    EXCLUDED_METRIC_PREFIXES,
 )
 from src.core.data_loader import (
     load_codebook,
@@ -85,9 +88,6 @@ except Exception as e:
 # Render pivot dimension selectors
 pivot_tab, pivot_row, pivot_col, pivot_sum = render_pivot_selector(chinese_columns)
 
-st.write(df.tail(1000))
-st.write(df_decode.tail(1000))
-
 # Render filter sidebar
 render_filter_sidebar(df_decode, chinese_columns)
 
@@ -107,13 +107,14 @@ if st.button("查詢", type="primary"):
     try:
         # Prepare filters for caching (hashable tuple)
         current_filter_items = []
-        for col in df_decode.columns[1:-1]:
+        for col in df_decode.columns:
             if col in st.session_state and st.session_state[col]:
                 current_filter_items.append((col, tuple(sorted(st.session_state[col]))))
         current_filter_items = tuple(sorted(current_filter_items))
 
         # Compute pivot tables
-        unique_years, results, row_totals_year, col_totals_year, all_totals_year = (
+        # Compute pivot tables
+        unique_tabs, results, row_totals, col_totals, all_totals, masked_df = (
             compute_pivot_tables(
                 df_decode,
                 pivot_tab,
@@ -131,11 +132,19 @@ if st.button("查詢", type="primary"):
             st.stop()
 
         # Render pivot table tabs
-        render_pivot_tabs(unique_years, results, axis)
+        render_pivot_tabs(
+            unique_tabs, 
+            results, 
+            axis, 
+            masked_df=masked_df,
+            pivot_tab_col=pivot_tab,
+            chinese_columns=chinese_columns
+        )
 
         # Calculate growth rates
+        # Pass pivot_tab name so it can check if it's numeric/time series
         overall_growth_df, row_growth_df, col_growth_df = calculate_growth_rates(
-            row_totals_year, col_totals_year, all_totals_year
+            row_totals, col_totals, all_totals, pivot_tab_name=pivot_tab
         )
 
         # Render growth analysis
