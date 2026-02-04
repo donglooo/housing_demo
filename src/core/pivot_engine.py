@@ -13,6 +13,7 @@ from typing import Dict, List, Tuple, Optional
 @st.cache_data
 def compute_pivot_tables(
     df_decode: pd.DataFrame,
+    pivot_tab: str,
     pivot_row: str,
     pivot_col: str,
     pivot_sum: str,
@@ -45,12 +46,12 @@ def compute_pivot_tables(
 
     # Filter out null years
     unique_years = sorted(
-        [int(y) for y in df_all_years["DATA_YR"].unique() if not pd.isna(y)],
+        [int(y) for y in df_all_years[pivot_tab].unique() if not pd.isna(y)],
         reverse=True,
     )
 
     super_pivot = df_all_years.pivot_table(
-        index=["DATA_YR", pivot_row], columns=pivot_col, values=pivot_sum, aggfunc="sum"
+        index=[pivot_tab, pivot_row], columns=pivot_col, values=pivot_sum, aggfunc="sum"
     ).fillna(0)
 
     # 2. 進行年別篩選
@@ -64,7 +65,7 @@ def compute_pivot_tables(
 
     for data_yr in unique_years:
         try:
-            pivot_table = super_pivot.xs(data_yr, level="DATA_YR").copy()
+            pivot_table = super_pivot.xs(data_yr, level=pivot_tab).copy()
         except KeyError:
             results[data_yr] = None
             continue
@@ -104,9 +105,9 @@ def compute_pivot_tables(
         }
 
         # Store totals for year-over-year comparison
-        row_totals_year.append({"DATA_YR": data_yr, **pivot_table["全國"].to_dict()})
+        row_totals_year.append({pivot_tab: data_yr, **pivot_table["全國"].to_dict()})
         col_totals_year.append(
-            {"DATA_YR": data_yr, **pivot_table.loc["全國"].to_dict()}
+            {pivot_tab: data_yr, **pivot_table.loc["全國"].to_dict()}
         )
         all_totals_year.append([data_yr, pivot_table.loc["全國", "全國"]])
 
@@ -116,6 +117,7 @@ def compute_pivot_tables(
 def apply_filters(
     df: pd.DataFrame,
     filters: Dict[str, List],
+    pivot_tab: str,
     pivot_row: str,
     pivot_col: str,
     data_yr: Optional[int] = None,

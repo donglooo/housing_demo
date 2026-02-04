@@ -27,7 +27,7 @@ def get_unique_values(df: pd.DataFrame) -> Dict[str, List]:
     unique_vals = {}
     for col in df.columns:
         # Filter out NaN/None values and sort
-        unique_vals[col] = sorted([x for x in df[col].unique() if pd.notna(x)])
+        unique_vals[col] = sorted([x for x in df[col].unique() if pd.notna(x)], key=str)
     return unique_vals
 
 
@@ -41,12 +41,17 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
     Returns:
         Tuple of (pivot_row, pivot_col, pivot_sum) selected values
     """
-    pivot_row_col, pivot_col_col, pivot_sum_col = st.columns(3)
+    pivot_tab_col, pivot_row_col, pivot_col_col, pivot_sum_col = st.columns(4)
 
     opts = list(chinese_columns.keys())
 
     def get_label(key):
         return chinese_columns.get(key, key)
+
+    with pivot_tab_col:
+        p_tab = st.selectbox(
+            "分組依據(Tab)", opts, format_func=get_label, key="pivot_tab"
+        )
 
     with pivot_row_col:
         p_row = st.selectbox(
@@ -61,7 +66,7 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
     with pivot_sum_col:
         p_sum = st.selectbox("計算欄", ["CNT"], key="pivot_sum")
 
-    return p_row, p_col, p_sum
+    return p_tab, p_row, p_col, p_sum
 
 
 def render_filter_sidebar(
@@ -82,7 +87,19 @@ def render_filter_sidebar(
     # Get cached unique values to prevent reloading entire column data
     unique_values = get_unique_values(df_decode)
 
-    for col in df_decode.columns[1:-1]:
+    # not like CNT_, SUM_, DATA_STATUS
+    filters = [
+        col
+        for col in df_decode.columns
+        if not col.startswith("CNT_")
+        and not col.startswith("SUM_")
+        and col != "DATA_STATUS"
+        and col != "CNT"
+        and col != "GID"
+        and col != ""
+    ]
+
+    for col in filters:
         opts = unique_values.get(col, [])
         st.sidebar.multiselect(get_label(col), opts, key=col)
 

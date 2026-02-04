@@ -83,7 +83,10 @@ except Exception as e:
 # ========================= UI CONTROLS =========================
 
 # Render pivot dimension selectors
-pivot_row, pivot_col, pivot_sum = render_pivot_selector(chinese_columns)
+pivot_tab, pivot_row, pivot_col, pivot_sum = render_pivot_selector(chinese_columns)
+
+st.write(df.tail(1000))
+st.write(df_decode.tail(1000))
 
 # Render filter sidebar
 render_filter_sidebar(df_decode, chinese_columns)
@@ -113,6 +116,7 @@ if st.button("查詢", type="primary"):
         unique_years, results, row_totals_year, col_totals_year, all_totals_year = (
             compute_pivot_tables(
                 df_decode,
+                pivot_tab,
                 pivot_row,
                 pivot_col,
                 pivot_sum,
