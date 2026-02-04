@@ -61,12 +61,12 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
 
     with pivot_row_col:
         p_row = st.selectbox(
-            "列維度(Row)", opts, format_func=get_label, key="pivot_row"
+            "列維度(Row)", opts, index=1 if len(opts) > 1 else 0, format_func=get_label, key="pivot_row"
         )
 
     with pivot_col_col:
         p_col = st.selectbox(
-            "欄維度(Column)", opts, format_func=get_label, key="pivot_col"
+            "欄維度(Column)", opts, index=4 if len(opts) > 4 else 0, format_func=get_label, key="pivot_col"
         )
 
     with pivot_sum_col:
