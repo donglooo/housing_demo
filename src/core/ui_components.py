@@ -15,7 +15,6 @@ from src.core.config_manager import (
 )
 
 
-
 @st.cache_data
 def get_unique_values(df: pd.DataFrame) -> Dict[str, List]:
     """
@@ -61,17 +60,27 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
 
     with pivot_row_col:
         p_row = st.multiselect(
-            "列維度(Row)", opts, default=[opts[1]] if len(opts) > 1 else [opts[0]], format_func=get_label, key="pivot_row", max_selections=2
+            "列維度(Row)",
+            opts,
+            default=[opts[1]] if len(opts) > 1 else [opts[0]],
+            format_func=get_label,
+            key="pivot_row",
+            max_selections=2,
         )
         if not p_row:
-             p_row = [opts[1]] if len(opts) > 1 else [opts[0]]
+            p_row = [opts[1]] if len(opts) > 1 else [opts[0]]
 
     with pivot_col_col:
         p_col = st.multiselect(
-            "欄維度(Column)", opts, default=[opts[4]] if len(opts) > 4 else [opts[0]], format_func=get_label, key="pivot_col", max_selections=2
+            "欄維度(Column)",
+            opts,
+            default=[],
+            format_func=get_label,
+            key="pivot_col",
+            max_selections=2,
         )
         if not p_col:
-            p_col = [opts[4]] if len(opts) > 4 else [opts[0]]
+            p_col = []
 
     with pivot_sum_col:
         p_sum = st.selectbox("計算欄", ["CNT"], key="pivot_sum")
@@ -136,13 +145,14 @@ def render_visual_settings() -> Optional[int]:
 
 
 def render_pivot_tabs(
-    unique_keys: List[any], 
-    results: Dict[any, Dict], 
+    unique_keys: List[any],
+    results: Dict[any, Dict],
     axis: Optional[int],
     masked_df: Optional[pd.DataFrame] = None,
     pivot_tab_col: Optional[str] = None,
     chinese_columns: Optional[Dict] = None,
-    ref_totals: Optional[Dict] = None
+    ref_totals: Optional[Dict] = None,
+    ref_df: Optional[pd.DataFrame] = None,
 ) -> None:
     """
     Render pivot table tabs with styling.
@@ -155,13 +165,18 @@ def render_pivot_tabs(
         pivot_tab_col: Column name identifying the tab dimension
         chinese_columns: Mapping for column name display
         ref_totals: Dictionary of reference totals (unfiltered universe count) per tab
+        ref_df: DataFrame containing reference data
     """
     tabs = st.tabs([str(k) for k in unique_keys])
 
     for i, tab_key in enumerate(unique_keys):
         with tabs[i]:
             # --- Check and Display Masked Data for this Tab ---
-            if masked_df is not None and pivot_tab_col is not None and not masked_df.empty:
+            if (
+                masked_df is not None
+                and pivot_tab_col is not None
+                and not masked_df.empty
+            ):
                 # Filter masked rows relevant to this tab
                 # Handle type mismatches carefully (convert to string if needed, or rely on pandas)
                 try:
@@ -169,47 +184,126 @@ def render_pivot_tabs(
                     local_masked = masked_df[masked_df[pivot_tab_col] == tab_key]
                 except Exception:
                     # Fallback to string comparison
-                    local_masked = masked_df[masked_df[pivot_tab_col].astype(str) == str(tab_key)]
+                    local_masked = masked_df[
+                        masked_df[pivot_tab_col].astype(str) == str(tab_key)
+                    ]
 
                 if not local_masked.empty:
                     msg = f"ℹ️ 此分組包含 {len(local_masked)} 組被遮蔽資料（樣本數小於 3 筆）。"
+
+                    # Display calculation details in container
                     if ref_totals:
-                        st.write(ref_totals)
-                        # Try exact or str match for key
-                        val = ref_totals.get(tab_key)
-                        if val is None:
-                            # Try str match scan
-                            for k, v in ref_totals.items():
-                                if str(k) == str(tab_key):
-                                    val = v
-                                    break
+                        with st.expander("🔍 查看參考總計計算明細", expanded=False):
+                            st.write("**參考總計字典 (ref_totals):**")
+                            st.json(ref_totals)
+
+                            st.write(
+                                f"**當前分組鍵 (tab_key):** `{tab_key}` (型別: `{type(tab_key).__name__}`)"
+                            )
+
+                            # Show ref_df details for this tab
+                            if ref_df is not None and not ref_df.empty:
+                                st.write("---")
+                                st.write("**📊 彙整前的明細資料 (ref_df):**")
+                                st.write(
+                                    "此為計算 ref_totals 前，符合條件的原始資料（pivot 軸為 Null 的總計列）"
+                                )
+
+                                # Filter ref_df for current tab
+                                try:
+                                    tab_ref_df = ref_df[
+                                        ref_df[pivot_tab_col] == tab_key
+                                    ]
+                                except Exception:
+                                    tab_ref_df = ref_df[
+                                        ref_df[pivot_tab_col].astype(str)
+                                        == str(tab_key)
+                                    ]
+
+                                if not tab_ref_df.empty:
+                                    st.write(f"**當前分組 ({tab_key}) 的明細資料:**")
+                                    st.dataframe(tab_ref_df, use_container_width=True)
+                                    st.write(f"**筆數:** {len(tab_ref_df)} 筆")
+                                    if "CNT" in tab_ref_df.columns:
+                                        total_cnt = tab_ref_df["CNT"].sum()
+                                        st.write(f"**CNT 總和:** {total_cnt:,.0f}")
+                                else:
+                                    st.warning(f"找不到分組 {tab_key} 的明細資料")
+
+                                st.write("---")
+                                st.write("**完整 ref_df (所有分組):**")
+                                st.dataframe(ref_df, use_container_width=True)
+
+                            # Try exact or str match for key
+                            val = ref_totals.get(tab_key)
+
+                            st.write("---")
+                            st.write("**查找過程:**")
+                            if val is not None:
+                                st.success(
+                                    f"✅ 直接匹配成功: `ref_totals[{tab_key}]` = {val:,.0f}"
+                                )
+                            else:
+                                st.warning(
+                                    f"⚠️ 直接匹配失敗: `ref_totals.get({tab_key})` 返回 None"
+                                )
+                                st.write("**嘗試字串匹配:**")
+
+                                # Try str match scan
+                                match_found = False
+                                for k, v in ref_totals.items():
+                                    is_match = str(k) == str(tab_key)
+                                    if is_match:
+                                        val = v
+                                        match_found = True
+                                        st.success(
+                                            f"✅ 字串匹配成功: `str({k})` == `str({tab_key})` → 值 = {v:,.0f}"
+                                        )
+                                        break
+                                    else:
+                                        st.write(
+                                            f"   ❌ `str({k})` != `str({tab_key})`"
+                                        )
+
+                                if not match_found:
+                                    st.error("❌ 未找到匹配的鍵值")
+
+                            if val is not None:
+                                st.write(f"**最終結果:** {val:,.0f} 宅")
+
                         if val is not None:
-                             msg += f"（而未經篩選及遮蔽的本分組總計應為: {val:,.0f} 宅）"
-                    
+                            msg += (
+                                f"（而未經篩選及遮蔽的本分組總計應為: {val:,.0f} 宅）"
+                            )
+
                     st.info(msg)
-                    with st.expander(f"查看共有 {len(local_masked)} 組被遮蔽的資料細節"):
-                         mask_details = []
-                         col_map = chinese_columns if chinese_columns else {}
-                         
-                         for idx, row in local_masked.iterrows():
+                    with st.expander(
+                        f"查看共有 {len(local_masked)} 組被遮蔽的資料細節"
+                    ):
+                        mask_details = []
+                        col_map = chinese_columns if chinese_columns else {}
+
+                        for idx, row in local_masked.iterrows():
                             dims = []
                             for col in local_masked.columns:
                                 if (
-                                    col not in EXCLUDED_METRIC_COLS 
-                                    and not str(col).startswith(EXCLUDED_METRIC_PREFIXES)
+                                    col not in EXCLUDED_METRIC_COLS
+                                    and not str(col).startswith(
+                                        EXCLUDED_METRIC_PREFIXES
+                                    )
                                     and pd.notna(row[col])
                                 ):
-                                     col_name = col_map.get(col, col)
-                                     val = row[col]
-                                     dims.append(f"{col_name}: {val}")
-                            
+                                    col_name = col_map.get(col, col)
+                                    val = row[col]
+                                    dims.append(f"{col_name}: {val}")
+
                             if dims:
                                 mask_details.append(" | ".join(dims))
-                         
-                         if mask_details:
-                             st.write(mask_details)
-                         else:
-                             st.write("無法識別特定的維度組合")
+
+                        if mask_details:
+                            st.write(mask_details)
+                        else:
+                            st.write("無法識別特定的維度組合")
             # --------------------------------------------------
 
             res = results.get(tab_key)
@@ -233,22 +327,49 @@ def render_pivot_tabs(
                 # 1. Prepare Base DataFrames
                 df_val = pivot_table.copy()
                 df_pct = pivot_table_row.copy()
-                
+
                 # 2. Interleave columns
                 # Move '全國' (Total) to front if exists
                 cols = [c for c in df_val.columns if c != "全國"]
-                
+
                 hybrid_df = pd.DataFrame(index=df_val.index)
-                
+
                 # Add Total column first
                 if "全國" in df_val.columns:
                     hybrid_df["全國"] = df_val["全國"]
-                
+
                 # Interleave others
                 format_map = {}
                 # Add Total format
                 if "全國" in df_val.columns:
-                     format_map["全國"] = "{:,.0f}"
+                    format_map["全國"] = "{:,.0f}"
+
+                # Insert Average Columns if available
+                # results.get(tab_key) -> 'avg_data'
+                avg_data = res.get("avg_data")
+                if avg_data:
+                    rows_avg = avg_data["rows_avg"]
+                    total_avg = avg_data["total_avg"]
+
+                    # avg_data rows_avg index should match pivot table index (excluding Total Row "全國" usually, unless integrated)
+                    # total_row_key is "全國" or ("全國", ...)
+                    total_row_key = hybrid_df.index[0]
+
+                    for avg_key in rows_avg.columns:
+                        # Create a series for the column
+                        # 1. Fill with rows_avg data
+                        # Align to hybrid_df index (which includes Total Row)
+                        s = pd.Series(index=hybrid_df.index, dtype=float)
+
+                        # Assign row values (aligning by index)
+                        # rows_avg index should match non-total rows of hybrid_df
+                        s.update(rows_avg[avg_key])
+
+                        # Assign Total Row value
+                        s.loc[total_row_key] = total_avg.get(avg_key, 0)
+
+                        hybrid_df[avg_key] = s
+                        format_map[avg_key] = "{:,.2f}"
 
                 pct_cols = []
                 for c in cols:
@@ -256,25 +377,22 @@ def render_pivot_tabs(
                     val_col_name = f"{c}"
                     hybrid_df[val_col_name] = df_val[c]
                     format_map[val_col_name] = "{:,.0f}"
-                    
+
                     # Pct Column
                     pct_col_name = f"{c}(%)"
-                    hybrid_df[pct_col_name] = df_pct[c] 
+                    hybrid_df[pct_col_name] = df_pct[c]
                     format_map[pct_col_name] = "{:.2%}"
                     pct_cols.append(pct_col_name)
 
                 # 3. Display
                 # Define gradient subset
                 gradient_rows = [idx for idx in pivot_table.index if idx != "全國"]
-                
+
                 st.dataframe(
-                    hybrid_df.style.format(format_map)
-                    .background_gradient(
-                        subset=(gradient_rows, pct_cols), 
-                        cmap="Blues", 
-                        axis=axis
+                    hybrid_df.style.format(format_map).background_gradient(
+                        subset=(gradient_rows, pct_cols), cmap="Blues", axis=axis
                     ),
-                    height=int((len(hybrid_df) * 35) + 37)
+                    height=int((len(hybrid_df) * 35) + 37),
                 )
 
             # Calculate dynamic height
@@ -325,63 +443,63 @@ def render_pivot_tabs(
                 )
 
 
-def render_growth_analysis(
-    overall_growth_df: Optional[pd.DataFrame],
-    row_growth_df: Optional[pd.DataFrame],
-    col_growth_df: Optional[pd.DataFrame],
-    pivot_row: str,
-    pivot_col: str,
-) -> None:
-    """
-    Render growth rate analysis tabs.
+# def render_growth_analysis(
+#     overall_growth_df: Optional[pd.DataFrame],
+#     row_growth_df: Optional[pd.DataFrame],
+#     col_growth_df: Optional[pd.DataFrame],
+#     pivot_row: str,
+#     pivot_col: str,
+# ) -> None:
+#     """
+#     Render growth rate analysis tabs.
 
-    Args:
-        overall_growth_df: Overall growth DataFrame
-        row_growth_df: Row dimension growth DataFrame
-        col_growth_df: Column dimension growth DataFrame
-        pivot_row: Row dimension name
-        pivot_col: Column dimension name
-    """
-    st.markdown("### 年增率分析")
+#     Args:
+#         overall_growth_df: Overall growth DataFrame
+#         row_growth_df: Row dimension growth DataFrame
+#         col_growth_df: Column dimension growth DataFrame
+#         pivot_row: Row dimension name
+#         pivot_col: Column dimension name
+#     """
+#     st.markdown("### 年增率分析")
 
-    growth_tabs = st.tabs(["總體", "列(Row)維度", "欄(Col)維度"])
+#     growth_tabs = st.tabs(["總體", "列(Row)維度", "欄(Col)維度"])
 
-    with growth_tabs[0]:
-        if overall_growth_df is not None:
-            col_metric1, col_metric2 = st.columns(2)
+#     with growth_tabs[0]:
+#         if overall_growth_df is not None:
+#             col_metric1, col_metric2 = st.columns(2)
 
-            avg_growth = overall_growth_df["YEARLY_GROWTH_PCT"].mean()
-            latest_growth = overall_growth_df["YEARLY_GROWTH_PCT"].iloc[-1]
+#             avg_growth = overall_growth_df["YEARLY_GROWTH_PCT"].mean()
+#             latest_growth = overall_growth_df["YEARLY_GROWTH_PCT"].iloc[-1]
 
-            col_metric1.metric("平均年增率", f"{avg_growth:.2f}%")
-            col_metric2.metric("最新年增率", f"{latest_growth:.2f}%")
+#             col_metric1.metric("平均年增率", f"{avg_growth:.2f}%")
+#             col_metric2.metric("最新年增率", f"{latest_growth:.2f}%")
 
-            st.dataframe(
-                overall_growth_df[
-                    ["DATA_YR", "TOTAL", "YEARLY_GROWTH_PCT"]
-                ].style.format({"TOTAL": "{:,.0f}", "YEARLY_GROWTH_PCT": "{:,.2f}%"})
-            )
-        else:
-            st.info("無足夠資料計算年增率")
+#             st.dataframe(
+#                 overall_growth_df[
+#                     ["DATA_YR", "TOTAL", "YEARLY_GROWTH_PCT"]
+#                 ].style.format({"TOTAL": "{:,.0f}", "YEARLY_GROWTH_PCT": "{:,.2f}%"})
+#             )
+#         else:
+#             st.info("無足夠資料計算年增率")
 
-    with growth_tabs[1]:
-        if row_growth_df is not None:
-            st.write(f"列維度 ({pivot_row}) 年增率 (%):")
-            st.dataframe(
-                row_growth_df.style.format("{:,.2f}%").background_gradient(
-                    cmap="RdYlBu", vmin=-10, vmax=10
-                )
-            )
-        else:
-            st.info("無足夠資料計算年增率")
+#     with growth_tabs[1]:
+#         if row_growth_df is not None:
+#             st.write(f"列維度 ({pivot_row}) 年增率 (%):")
+#             st.dataframe(
+#                 row_growth_df.style.format("{:,.2f}%").background_gradient(
+#                     cmap="RdYlBu", vmin=-10, vmax=10
+#                 )
+#             )
+#         else:
+#             st.info("無足夠資料計算年增率")
 
-    with growth_tabs[2]:
-        if col_growth_df is not None:
-            st.write(f"欄維度 ({pivot_col}) 年增率 (%):")
-            st.dataframe(
-                col_growth_df.style.format("{:,.2f}%").background_gradient(
-                    cmap="RdYlBu", vmin=-10, vmax=10
-                )
-            )
-        else:
-            st.info("無足夠資料計算年增率")
+#     with growth_tabs[2]:
+#         if col_growth_df is not None:
+#             st.write(f"欄維度 ({pivot_col}) 年增率 (%):")
+#             st.dataframe(
+#                 col_growth_df.style.format("{:,.2f}%").background_gradient(
+#                     cmap="RdYlBu", vmin=-10, vmax=10
+#                 )
+#             )
+#         else:
+#             st.info("無足夠資料計算年增率")

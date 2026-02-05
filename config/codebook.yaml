@@ -67,6 +67,9 @@ ownership:
       23: "70坪以上"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    avg:
+      num: 'SUM_AGE'
+      den: 'CNT_AGE'
     group_type: "grouping_set"
 
   BUILDING_AGE_GROUP:
@@ -85,6 +88,9 @@ ownership:
       20: "50年以上"
       98: "資料異常(小於0)"
       99: "資料缺失"
+    avg:
+      num: 'SUM_AREA'
+      den: 'CNT_AREA'
     group_type: "grouping_set"
 
   MATERIALS_GROUP_NEW:
@@ -111,6 +117,9 @@ ownership:
       16: "20層以上"
       98: "資料異常(0層以下)"
       99: "資料缺失"
+    avg:
+      num: 'SUM_FLOOR'
+      den: 'CNT_FLOOR'
     group_type: "grouping_set"
 
   PURPOSE_GROUP:
@@ -210,6 +219,9 @@ tax:
       23: "70坪以上"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    avg:
+      num: 'SUM_AREA'
+      den: 'CNT_AREA'
     group_type: "grouping_set"
 
   HOU_DEPR_YEAR_OLD_GROUP:
@@ -228,6 +240,9 @@ tax:
       20: "50年以上"
       98: "資料異常(小於0)"
       99: "資料缺失"
+    avg:
+      num: 'SUM_AGE'
+      den: 'CNT_AGE'
     group_type: "grouping_set"
 
   STRUC_MAX_GROUP:
@@ -255,15 +270,74 @@ tax:
       16: "20層以上"
       98: "資料異常(0層以下)"
       99: "資料缺失"
+    avg:
+      num: 'SUM_FLOOR'
+      den: 'CNT_FLOOR'
+    group_type: "grouping_set"
+
+  REGISTER_REASON_GROUP:
+    name: "登記原因"
+    dtype: "category"
+    codes:
+      1: "買賣"
+      2: "第一次登記"
+      3: "繼承"
+      4: "贈與"
+      5: "拍賣"
+      6: "其他"
+      99: "資料缺失"
+    group_type: "grouping_set"
+  
+  IS_REGIS_HOUSEHOLD:
+    name: "是否設籍"
+    dtype: "category"
+    codes:
+      0: "無"
+      1: "是(ADDRESS_ID比對)"
+      2: "是(地址比對)"
+      99: "資料缺失"
+    group_type: "grouping_set"
+  
+  OWNER_AGE_GROUP:
+    name: "所有權人年齡"
+    dtype: "Int64"
+    codes:
+      11: "18歲以下"
+      12: "18-25歲"
+      13: "25-35歲"
+      14: "35-45歲"
+      15: "45-55歲"
+      16: "55-65歲"
+      17: "65-75歲"
+      18: "75歲以上"
+      98: "資料異常(小於0)"
+      99: "資料缺失"
+    group_type: "grouping_set"
+  
+  EVENT_CON_GROUP:
+    name: "連續低度用電期數"
+    dtype: "Int64"
+    codes:
+      0: "0期"
+      1: "1期"
+      2: "2期"
+      3: "3期"
+      4: "4期以上"
+      99: "資料缺失"
     group_type: "grouping_set"
 
 columns_order:
   - DATA_YR
   - COUNTY
+  - TOWN
   - AREA_ALL_SUM_PING_GROUP
   - HOU_DEPR_YEAR_OLD_GROUP
   - STRUC_MAX_GROUP
   - HOU_FLOOR_MAX_GROUP
+  - REGISTER_REASON_GROUP
+  - IS_REGIS_HOUSEHOLD
+  - OWNER_AGE_GROUP
+  - EVENT_CON_GROUP
   - CNT
 
 power:
@@ -326,6 +400,9 @@ power:
       23: "70坪以上"
       98: "資料異常(等於0)"
       99: "資料缺失"
+    avg:
+      num: 'SUM_AREA'
+      den: 'CNT_AREA'
     group_type: "grouping_set"
 
   HOU_DEPR_YEAR_OLD_GROUP:
@@ -344,6 +421,9 @@ power:
       20: "50年以上"
       98: "資料異常(小於0)"
       99: "資料缺失"
+    avg:
+      num: 'SUM_AGE'
+      den: 'CNT_AGE'
     group_type: "grouping_set"
 
   STRUC_MAX_GROUP:
@@ -371,6 +451,9 @@ power:
       16: "20層以上"
       98: "資料異常(0層以下)"
       99: "資料缺失"
+    avg:
+      num: 'SUM_FLOOR'
+      den: 'CNT_FLOOR'
     group_type: "grouping_set"
 
   POWER_TYPE:
@@ -382,13 +465,30 @@ power:
       98: "資料異常" # <0
       99: "資料缺失" # Null
     group_type: "rollup"
+  
+  EVENT_CON_GROUP:
+    name: "連續低度用電期數"
+    dtype: "Int64"
+    codes:
+      1: "1期"
+      2: "2期"
+      3: "3期"
+      4: "4期以上"
+    avg:
+      num: 'SUM_LOW_POWER_CON'
+      den: 'CNT_LOW_POWER_CON'
+    group_type: "rollup"
 
 columns_order:
   - DATA_YR
   - COUNTY
+  - TOWN
+  - POWER_TYPE
+  - EVENT_CON_GROUP
   - AREA_ALL_SUM_PING_GROUP
   - HOU_DEPR_YEAR_OLD_GROUP
   - STRUC_MAX_GROUP
   - HOU_FLOOR_MAX_GROUP
-  - POWER_TYPE
   - CNT
+
+tax_power:

@@ -31,7 +31,7 @@ from src.core.ui_components import (
     render_filter_sidebar,
     render_visual_settings,
     render_pivot_tabs,
-    render_growth_analysis,
+    # render_growth_analysis,
 )
 
 
@@ -115,16 +115,23 @@ if st.button("查詢", type="primary"):
         current_filter_items = tuple(sorted(current_filter_items))
 
         # Compute pivot tables
-        unique_tabs, results, row_totals, col_totals, all_totals, masked_df, ref_totals = (
-            compute_pivot_tables(
-                df_decode,
-                pivot_tab,
-                pivot_row,
-                pivot_col,
-                pivot_sum,
-                current_filter_items,
-                codebook_sel,
-            )
+        (
+            unique_tabs,
+            results,
+            row_totals,
+            col_totals,
+            all_totals,
+            masked_df,
+            ref_totals,
+            ref_df,
+        ) = compute_pivot_tables(
+            df_decode,
+            pivot_tab,
+            pivot_row,
+            pivot_col,
+            pivot_sum,
+            current_filter_items,
+            codebook_sel,
         )
 
         # Check if we have any results
@@ -134,13 +141,14 @@ if st.button("查詢", type="primary"):
 
         # Render pivot table tabs
         render_pivot_tabs(
-            unique_tabs, 
-            results, 
-            axis, 
+            unique_tabs,
+            results,
+            axis,
             masked_df=masked_df,
             pivot_tab_col=pivot_tab,
             chinese_columns=chinese_columns,
-            ref_totals=ref_totals
+            ref_totals=ref_totals,
+            ref_df=ref_df,
         )
 
         # Calculate growth rates
@@ -150,9 +158,9 @@ if st.button("查詢", type="primary"):
         )
 
         # Render growth analysis
-        render_growth_analysis(
-            overall_growth_df, row_growth_df, col_growth_df, pivot_row, pivot_col
-        )
+        # render_growth_analysis(
+        #     overall_growth_df, row_growth_df, col_growth_df, pivot_row, pivot_col
+        # )
 
         # st.success("✅ 分析完成！")
 
