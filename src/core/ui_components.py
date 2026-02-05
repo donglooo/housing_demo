@@ -388,10 +388,26 @@ def render_pivot_tabs(
                 # Define gradient subset
                 gradient_rows = [idx for idx in pivot_table.index if idx != "全國"]
 
+                # Apply white background to NaN cells first, then gradient to non-NaN
+                styled = hybrid_df.style.format(format_map)
+
+                # Apply gradient
+                styled = styled.background_gradient(
+                    subset=(gradient_rows, pct_cols), cmap="Blues", axis=axis, vmin=0
+                )
+
+                # Override NaN cells with white background
+                def highlight_nan(val):
+                    if pd.isna(val):
+                        return "background-color: white"
+                    return ""
+
+                styled = styled.applymap(
+                    highlight_nan, subset=(gradient_rows, pct_cols)
+                )
+
                 st.dataframe(
-                    hybrid_df.style.format(format_map).background_gradient(
-                        subset=(gradient_rows, pct_cols), cmap="Blues", axis=axis
-                    ),
+                    styled,
                     height=int((len(hybrid_df) * 35) + 37),
                 )
 
@@ -403,42 +419,94 @@ def render_pivot_tabs(
             # gradient_rows already defined above
 
             with sub_tab1:
+                # Apply gradient and override NaN with white
+                styled = pivot_table.style.background_gradient(
+                    subset=(gradient_rows, gradient_columns),
+                    cmap="Blues",
+                    axis=axis,
+                    vmin=0,
+                ).format("{:,.0f}")
+
+                def highlight_nan(val):
+                    if pd.isna(val):
+                        return "background-color: white"
+                    return ""
+
+                styled = styled.applymap(
+                    highlight_nan, subset=(gradient_rows, gradient_columns)
+                )
+
                 st.dataframe(
-                    pivot_table.style.background_gradient(
-                        subset=(gradient_rows, gradient_columns),
-                        cmap="Blues",
-                        axis=axis,
-                    ).format("{:,.0f}"),
+                    styled,
                     height=dynamic_height,
                 )
 
             with sub_tab2:
+                # Apply gradient and override NaN with white
+                styled = pivot_table_row.style.background_gradient(
+                    subset=(gradient_rows, gradient_columns),
+                    cmap="Blues",
+                    axis=axis,
+                    vmin=0,
+                ).format("{:.2%}")
+
+                def highlight_nan(val):
+                    if pd.isna(val):
+                        return "background-color: white"
+                    return ""
+
+                styled = styled.applymap(
+                    highlight_nan, subset=(gradient_rows, gradient_columns)
+                )
+
                 st.dataframe(
-                    pivot_table_row.style.background_gradient(
-                        subset=(gradient_rows, gradient_columns),
-                        cmap="Blues",
-                        axis=axis,
-                    ).format("{:.2%}"),
+                    styled,
                     height=dynamic_height,
                 )
 
             with sub_tab3:
+                # Apply gradient and override NaN with white
+                styled = pivot_table_col.style.background_gradient(
+                    subset=(gradient_rows, gradient_columns),
+                    cmap="Blues",
+                    axis=axis,
+                    vmin=0,
+                ).format("{:.2%}")
+
+                def highlight_nan(val):
+                    if pd.isna(val):
+                        return "background-color: white"
+                    return ""
+
+                styled = styled.applymap(
+                    highlight_nan, subset=(gradient_rows, gradient_columns)
+                )
+
                 st.dataframe(
-                    pivot_table_col.style.background_gradient(
-                        subset=(gradient_rows, gradient_columns),
-                        cmap="Blues",
-                        axis=axis,
-                    ).format("{:.2%}"),
+                    styled,
                     height=dynamic_height,
                 )
 
             with sub_tab4:
+                # Apply gradient and override NaN with white
+                styled = pivot_table_total.style.background_gradient(
+                    subset=(gradient_rows, gradient_columns),
+                    cmap="Blues",
+                    axis=axis,
+                    vmin=0,
+                ).format("{:.2%}")
+
+                def highlight_nan(val):
+                    if pd.isna(val):
+                        return "background-color: white"
+                    return ""
+
+                styled = styled.applymap(
+                    highlight_nan, subset=(gradient_rows, gradient_columns)
+                )
+
                 st.dataframe(
-                    pivot_table_total.style.background_gradient(
-                        subset=(gradient_rows, gradient_columns),
-                        cmap="Blues",
-                        axis=axis,
-                    ).format("{:.2%}"),
+                    styled,
                     height=dynamic_height,
                 )
 
