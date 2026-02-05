@@ -97,8 +97,10 @@ axis = render_visual_settings()
 
 # ========================= VALIDATION =========================
 # Check if user selected same dimension for row and column
-if pivot_row == pivot_col:
-    st.info("🔼 請選擇不同的交叉維度")
+# Check if user selected same dimension for row and column (intersect)
+# pivot_row and pivot_col are now lists
+if set(pivot_row).intersection(set(pivot_col)):
+    st.info("🔼 請選擇不同的交叉維度（列與欄不能有重複）")
     st.stop()
 
 
@@ -113,8 +115,7 @@ if st.button("查詢", type="primary"):
         current_filter_items = tuple(sorted(current_filter_items))
 
         # Compute pivot tables
-        # Compute pivot tables
-        unique_tabs, results, row_totals, col_totals, all_totals, masked_df = (
+        unique_tabs, results, row_totals, col_totals, all_totals, masked_df, ref_totals = (
             compute_pivot_tables(
                 df_decode,
                 pivot_tab,
@@ -138,7 +139,8 @@ if st.button("查詢", type="primary"):
             axis, 
             masked_df=masked_df,
             pivot_tab_col=pivot_tab,
-            chinese_columns=chinese_columns
+            chinese_columns=chinese_columns,
+            ref_totals=ref_totals
         )
 
         # Calculate growth rates

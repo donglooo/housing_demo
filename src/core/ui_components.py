@@ -60,14 +60,18 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
         )
 
     with pivot_row_col:
-        p_row = st.selectbox(
-            "列維度(Row)", opts, index=1 if len(opts) > 1 else 0, format_func=get_label, key="pivot_row"
+        p_row = st.multiselect(
+            "列維度(Row)", opts, default=[opts[1]] if len(opts) > 1 else [opts[0]], format_func=get_label, key="pivot_row", max_selections=2
         )
+        if not p_row:
+             p_row = [opts[1]] if len(opts) > 1 else [opts[0]]
 
     with pivot_col_col:
-        p_col = st.selectbox(
-            "欄維度(Column)", opts, index=4 if len(opts) > 4 else 0, format_func=get_label, key="pivot_col"
+        p_col = st.multiselect(
+            "欄維度(Column)", opts, default=[opts[4]] if len(opts) > 4 else [opts[0]], format_func=get_label, key="pivot_col", max_selections=2
         )
+        if not p_col:
+            p_col = [opts[4]] if len(opts) > 4 else [opts[0]]
 
     with pivot_sum_col:
         p_sum = st.selectbox("計算欄", ["CNT"], key="pivot_sum")
@@ -137,7 +141,8 @@ def render_pivot_tabs(
     axis: Optional[int],
     masked_df: Optional[pd.DataFrame] = None,
     pivot_tab_col: Optional[str] = None,
-    chinese_columns: Optional[Dict] = None
+    chinese_columns: Optional[Dict] = None,
+    ref_totals: Optional[Dict] = None
 ) -> None:
     """
     Render pivot table tabs with styling.
@@ -149,6 +154,7 @@ def render_pivot_tabs(
         masked_df: Optional DataFrame containing masked data
         pivot_tab_col: Column name identifying the tab dimension
         chinese_columns: Mapping for column name display
+        ref_totals: Dictionary of reference totals (unfiltered universe count) per tab
     """
     tabs = st.tabs([str(k) for k in unique_keys])
 
@@ -166,7 +172,21 @@ def render_pivot_tabs(
                     local_masked = masked_df[masked_df[pivot_tab_col].astype(str) == str(tab_key)]
 
                 if not local_masked.empty:
-                    st.info("ℹ️ 此分組包含被遮蔽資料（樣本數小於 3 筆），詳細資訊如下：")
+                    msg = f"ℹ️ 此分組包含 {len(local_masked)} 組被遮蔽資料（樣本數小於 3 筆）。"
+                    if ref_totals:
+                        st.write(ref_totals)
+                        # Try exact or str match for key
+                        val = ref_totals.get(tab_key)
+                        if val is None:
+                            # Try str match scan
+                            for k, v in ref_totals.items():
+                                if str(k) == str(tab_key):
+                                    val = v
+                                    break
+                        if val is not None:
+                             msg += f"（而未經篩選及遮蔽的本分組總計應為: {val:,.0f} 宅）"
+                    
+                    st.info(msg)
                     with st.expander(f"查看共有 {len(local_masked)} 組被遮蔽的資料細節"):
                          mask_details = []
                          col_map = chinese_columns if chinese_columns else {}

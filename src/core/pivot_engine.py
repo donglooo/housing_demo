@@ -7,7 +7,7 @@ percentage calculations, and growth rate analysis.
 
 import pandas as pd
 import streamlit as st
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Union
 
 from src.core.config_manager import EXCLUDED_METRIC_PREFIXES, EXCLUDED_METRIC_COLS
 
@@ -16,12 +16,12 @@ from src.core.config_manager import EXCLUDED_METRIC_PREFIXES, EXCLUDED_METRIC_CO
 def compute_pivot_tables(
     df_decode: pd.DataFrame,
     pivot_tab: str,
-    pivot_row: str,
-    pivot_col: str,
+    pivot_rows: Union[str, List[str]],
+    pivot_cols: Union[str, List[str]],
     pivot_sum: str,
     filter_items: Tuple[Tuple[str, Tuple], ...],
     codebook: Dict,
-) -> Tuple[List[int], Dict[int, Dict], List[Dict], List[Dict], List[List], bool]:
+) -> Tuple[List[int], Dict[int, Dict], List[Dict], List[Dict], List[List], pd.DataFrame, Dict]:
     """
     Compute all pivot tables and summary statistics for each tab (group).
 
@@ -46,7 +46,47 @@ def compute_pivot_tables(
     # 1. 進行全域篩選
     active_filters = {k: v for k, v in filter_items}
 
-    df_all = apply_filters(df_decode, active_filters, pivot_tab, pivot_row, pivot_col, codebook=codebook)
+    df_all = apply_filters(df_decode, active_filters, pivot_tab, pivot_rows, pivot_cols, codebook=codebook)
+    
+    # Calculate Reference Totals (Parent Totals)
+    # Apply ALL filters, EXCEPT force pivot_rows and pivot_cols to be Null.
+    # This finds the "Parent Total" for the current view.
+    ref_totals = {}
+    if not df_decode.empty:
+        # Normalize list dims
+        p_rows = [pivot_rows] if isinstance(pivot_rows, str) else pivot_rows
+        p_cols = [pivot_cols] if isinstance(pivot_cols, str) else pivot_cols
+        
+        # Start with all rows
+        ref_mask = pd.Series(True, index=df_decode.index)
+        
+        # 1. Apply active filters (Logic: If col is NOT a pivot axis, apply filter. If it IS, ignore filter because we force it to Null)
+        for col, vals in active_filters.items():
+            if col not in p_rows and col not in p_cols:
+                ref_mask &= df_decode[col].isin(vals)
+        
+        # 2. Force Pivot Axes to Null (finding the Total Row)
+        for col in p_rows + p_cols:
+             ref_mask &= df_decode[col].isna()
+             
+        # 3. Pivot Tab must not be Null (we want totals per tab)
+        ref_mask &= df_decode[pivot_tab].notna()
+        
+        ref_df = df_decode[ref_mask]
+        
+        # Group by pivot_tab. We want CNT.
+        # Check if masked? "DATA_STATUS" == "遮蔽"
+        # We need to return value + masked status? 
+        # For simple UI, let's just return the CNT value. 
+        # If the parent is masked, the CNT is still the number we have (might be suppressed in public but here we have the raw data?)
+        # Or if "cnt" is missing, we check "data_status".
+        
+        # If DATA_STATUS is available, and it says masked, does CNT contain a value?
+        # Usually internal data has value, public data hides it.
+        # Assuming internal data has it.
+        
+        ref_totals_series = ref_df.groupby(pivot_tab)["CNT"].sum()
+        ref_totals = ref_totals_series.to_dict()
 
     # Check for masked data
     masked_df = pd.DataFrame()
@@ -78,8 +118,11 @@ def compute_pivot_tables(
         except Exception:
             unique_tabs = sorted(raw_tabs)
 
+    p_rows = [pivot_rows] if isinstance(pivot_rows, str) else pivot_rows
+    p_cols = [pivot_cols] if isinstance(pivot_cols, str) else pivot_cols
+
     super_pivot = df_all.pivot_table(
-        index=[pivot_tab, pivot_row], columns=pivot_col, values=pivot_sum, aggfunc="sum"
+        index=[pivot_tab] + p_rows, columns=p_cols, values=pivot_sum, aggfunc="sum"
     ).fillna(0)
 
     # 2. 進行分頁篩選
@@ -105,7 +148,7 @@ def compute_pivot_tables(
         # So super_pivot is correct.
 
         # Sort pivot table using codebook
-        pivot_table = sort_pivot_table(pivot_table, pivot_row, pivot_col, codebook)
+        pivot_table = sort_pivot_table(pivot_table, pivot_rows, pivot_cols, codebook)
 
         # Fill NaN with 0
         pivot_table = pivot_table.fillna(0)
@@ -126,19 +169,24 @@ def compute_pivot_tables(
         }
 
         # Store totals for comparison (e.g. YOY, or just trend)
-        row_totals_tab.append({pivot_tab: tab_val, **pivot_table["全國"].to_dict()})
-        col_totals_tab.append({pivot_tab: tab_val, **pivot_table.loc["全國"].to_dict()})
-        all_totals_tab.append([tab_val, pivot_table.loc["全國", "全國"]])
+        # Store totals for comparison (e.g. YOY, or just trend)
+        # Identify Total Row/Column Keys (Always at index 0/column 0 due to add_totals logic)
+        total_col_key = pivot_table.columns[0]
+        total_row_key = pivot_table.index[0]
 
-    return unique_tabs, results, row_totals_tab, col_totals_tab, all_totals_tab, masked_df
+        row_totals_tab.append({pivot_tab: tab_val, **pivot_table[total_col_key].to_dict()})
+        col_totals_tab.append({pivot_tab: tab_val, **pivot_table.loc[total_row_key].to_dict()})
+        all_totals_tab.append([tab_val, pivot_table.loc[total_row_key, total_col_key]])
+
+    return unique_tabs, results, row_totals_tab, col_totals_tab, all_totals_tab, masked_df, ref_totals
 
 
 def apply_filters(
     df: pd.DataFrame,
     filters: Dict[str, List],
     pivot_tab: str,
-    pivot_row: str,
-    pivot_col: str,
+    pivot_rows: Union[str, List[str]],
+    pivot_cols: Union[str, List[str]],
     tab_value: Optional[any] = None,
     codebook: Optional[Dict] = None,
 ) -> pd.DataFrame:
@@ -157,6 +205,10 @@ def apply_filters(
     Returns:
         Filtered DataFrame
     """
+
+    # Normalize dimensions to lists
+    p_rows = [pivot_rows] if isinstance(pivot_rows, str) else pivot_rows
+    p_cols = [pivot_cols] if isinstance(pivot_cols, str) else pivot_cols
 
     mask = pd.Series(True, index=df.index)  # 建立初始全為True之遮罩
     
@@ -181,7 +233,7 @@ def apply_filters(
         if col == pivot_tab:
              # Pivot tab dimension must not be null
             mask &= ~df[col].isna()
-        elif col == pivot_row or col == pivot_col:
+        elif col in p_rows or col in p_cols:
             # Pivot row/col dimensions must not be null
             mask &= ~df[col].isna()
         else:
@@ -214,55 +266,91 @@ def apply_filters(
 
 
 def sort_pivot_table(
-    pivot: pd.DataFrame, row_col: str, col_col: str, codebook: Dict
+    pivot: pd.DataFrame, 
+    row_cols: Union[str, List[str]], 
+    col_cols: Union[str, List[str]], 
+    codebook: Dict
 ) -> pd.DataFrame:
     """
     Sort pivot table rows and columns using codebook ordering.
+    Supports MultiIndex.
 
     Args:
         pivot: Pivot table to sort
-        row_col: Row dimension name (for codebook lookup)
-        col_col: Column dimension name (for codebook lookup)
+        row_cols: Row dimension name(s)
+        col_cols: Column dimension name(s)
         codebook: Codebook with ordering information
 
     Returns:
         Sorted pivot table
     """
+    # Normalize to lists
+    p_rows = [row_cols] if isinstance(row_cols, str) else row_cols
+    p_cols = [col_cols] if isinstance(col_cols, str) else col_cols
+
+    # Helper to generate sort key mapper
+    def get_sort_key(col_name):
+        if col_name in codebook and "codes" in codebook[col_name]:
+            codes = codebook[col_name]["codes"]
+            # Extract sort order from code keys (assuming int keys imply order)
+            sorted_keys = sorted([k for k in codes.keys() if isinstance(k, int) or str(k).isdigit()])
+            order_map = {codes[k]: i for i, k in enumerate(sorted_keys)}
+            
+            def mapper(index):
+                # Map values to their sort order, default to high value effectively putting unknowns at end
+                return index.map(order_map).fillna(float('inf'))
+            return mapper
+        return None
+
     try:
-        # Sort rows
-        if row_col in codebook and "codes" in codebook[row_col]:
-            codes = codebook[row_col]["codes"]
-            sorted_keys = sorted(
-                [k for k in codes.keys() if isinstance(k, int) or str(k).isdigit()]
-            )
-            sorted_labels = [codes[k] for k in sorted_keys]
-            # Remove duplicates while preserving order
-            sorted_labels = list(dict.fromkeys(sorted_labels))
+        # Sort Rows (Index)
+        # We sort by all levels simultaneously if possible, or iterate
+        # To respect hierarchy, we should rely on pandas sort_index(level=...)
+        # We construct a list of keys for each level
+        
+        # Check if index matches requested rows (handle potential mismatch if something changed)
+        # pivot.index might be MultiIndex or Index.
+        
+        # We iterate and sort. 
+        # Pandas sort_index(key=...) applies to the whole index if level not specified, 
+        # or specific level. But passing list of keys to list of levels is tricky in one call if keys differ.
+        # Strategy: Iterate levels and set them as Categorical if possible? 
+        # Or just use the stable sort property: Sort by last level, then second to last...
+        
+        # Actually simplest way for stability:
+        # 1. Iterate dimensions distinct levels.
+        # But we want Level 0 to be primary.
+        # So we sort by Level n (Last), then ... Level 0.
+        
+        for i in reversed(range(len(p_rows))):
+            col = p_rows[i]
+            mapper = get_sort_key(col)
+            if mapper:
+                # Use sort_index with key
+                # level argument can be int (i) or name (col)
+                # verify level exists
+                if isinstance(pivot.index, pd.MultiIndex):
+                     if i < pivot.index.nlevels:
+                        pivot = pivot.sort_index(level=i, key=mapper, sort_remaining=False)
+                else:
+                     # Single index
+                     pivot = pivot.sort_index(key=mapper)
+        
+        # Sort Columns (Columns)
+        # Same logic
+        for i in reversed(range(len(p_cols))):
+            col = p_cols[i]
+            mapper = get_sort_key(col)
+            if mapper:
+                 if isinstance(pivot.columns, pd.MultiIndex):
+                     if i < pivot.columns.nlevels:
+                        pivot = pivot.sort_index(axis=1, level=i, key=mapper, sort_remaining=False)
+                 else:
+                     pivot = pivot.sort_index(axis=1, key=mapper)
 
-            current_labels = pivot.index.tolist()
-            final_row_order = [
-                lbl for lbl in sorted_labels if lbl in current_labels
-            ] + [lbl for lbl in current_labels if lbl not in sorted_labels]
-            pivot = pivot.reindex(index=final_row_order)
-
-        # Sort columns
-        if col_col in codebook and "codes" in codebook[col_col]:
-            codes = codebook[col_col]["codes"]
-            sorted_keys = sorted(
-                [k for k in codes.keys() if isinstance(k, int) or str(k).isdigit()]
-            )
-            sorted_labels = [codes[k] for k in sorted_keys]
-            # Remove duplicates while preserving order
-            sorted_labels = list(dict.fromkeys(sorted_labels))
-
-            current_labels = pivot.columns.tolist()
-            final_col_order = [
-                lbl for lbl in sorted_labels if lbl in current_labels
-            ] + [lbl for lbl in current_labels if lbl not in sorted_labels]
-            pivot = pivot.reindex(columns=final_col_order)
-
-    except Exception:
-        # If sorting fails, keep original order
+    except Exception as e:
+        # If sorting fails, just return original
+        # st.write(f"Sort error: {e}")
         pass
 
     return pivot
@@ -271,6 +359,7 @@ def sort_pivot_table(
 def add_totals(pivot: pd.DataFrame) -> pd.DataFrame:
     """
     Add row and column totals to pivot table.
+    Supports MultiIndex by creating ("全國", "", ...) keys.
 
     Args:
         pivot: Pivot table
@@ -283,22 +372,66 @@ def add_totals(pivot: pd.DataFrame) -> pd.DataFrame:
     col_sum = pivot.sum(axis=1)
     grand_total = row_sum.sum()
 
+    # Determine Total Key format based on nlevels
+    def get_total_key(nlevels):
+        if nlevels > 1:
+            # For MultiIndex, use ("全國", "", ...)
+            return tuple(["全國"] + [""] * (nlevels - 1))
+        return "全國"
+
+    row_total_key = get_total_key(pivot.index.nlevels)
+    col_total_key = get_total_key(pivot.columns.nlevels)
+
     # Reconstruct DataFrame with "全國" at the top/left
     
-    # 1. Add "全國" to row_sum (for the top row)
-    row_sum["全國"] = grand_total
+    # 1. Add "全國" to row_sum (for the top row) which is indexed by columns
+    # Wait, row_sum index is pivot.columns. So we need to insert col_total_key into row_sum?
+    # No, row_sum represents the SUM of each column. 
+    # But later we want to insert 'grand_total' into it at the position of 'col_total_key'.
+    # Because the top row (Total Row) will have values for all columns, PLUS the Total Column.
     
-    # 2. Create new index with "全國" first
-    new_index = ["全國"] + [idx for idx in pivot.index]
-    new_columns = ["全國"] + [col for col in pivot.columns]
+    # Actually simpler to just construct the new DF and fill it.
+    
+    # Create new index logic
+    # We append the total key to the existing index/columns
+    
+    new_index_vals = [row_total_key] + list(pivot.index)
+    
+    # Construct proper Index object
+    if pivot.index.nlevels > 1:
+        new_index = pd.MultiIndex.from_tuples(new_index_vals, names=pivot.index.names)
+    else:
+        new_index = pd.Index(new_index_vals, name=pivot.index.name)
+
+    new_col_vals = [col_total_key] + list(pivot.columns)
+    if pivot.columns.nlevels > 1:
+        new_columns = pd.MultiIndex.from_tuples(new_col_vals, names=pivot.columns.names)
+    else:
+        new_columns = pd.Index(new_col_vals, name=pivot.columns.name)
     
     # 3. Create new DF
     pivot_with_totals = pd.DataFrame(index=new_index, columns=new_columns)
     
     # 4. Fill values
-    pivot_with_totals.loc["全國", "全國"] = grand_total
-    pivot_with_totals.loc["全國", pivot.columns] = row_sum[pivot.columns]
-    pivot_with_totals.loc[pivot.index, "全國"] = col_sum
+    # Grand Total (Top-Left)
+    pivot_with_totals.loc[row_total_key, col_total_key] = grand_total
+    
+    # Top Row (Sum of columns)
+    # pivot_with_totals.loc[row_total_key, pivot.columns] = row_sum
+    # Note: row_sum index matches pivot.columns.
+    # We assign to the slice excluding the total column
+    # Slicing with MultiIndex loc is tricky if not sorted.
+    # Use iloc? No, construct by parts or use direct assignment.
+    
+    # Assigning by columns matching
+    # Top Row (excluding Grand Total cell)
+    pivot_with_totals.loc[row_total_key, pivot.columns] = row_sum.values
+    
+    # Left Column (Sum of rows) excluding Grand Total cell
+    # pivot_with_totals.loc[pivot.index, col_total_key] = col_sum
+    pivot_with_totals.loc[pivot.index, col_total_key] = col_sum.values
+    
+    # Inner Data
     pivot_with_totals.loc[pivot.index, pivot.columns] = pivot.values
 
     # Ensure numeric types
