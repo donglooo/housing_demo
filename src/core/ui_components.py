@@ -54,15 +54,23 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
         return chinese_columns.get(key, key)
 
     with pivot_tab_col:
+        # Initialize default if not set
+        if "pivot_tab" not in st.session_state and opts:
+            st.session_state["pivot_tab"] = opts[0]
+            
         p_tab = st.selectbox(
             "分組依據(Tab)", opts, format_func=get_label, key="pivot_tab"
         )
 
     with pivot_row_col:
+        # Initialize default if not set
+        if "pivot_row" not in st.session_state:
+            st.session_state["pivot_row"] = [opts[1]] if len(opts) > 1 else [opts[0]]
+            
         p_row = st.multiselect(
             "列維度(Row)",
             opts,
-            default=[opts[1]] if len(opts) > 1 else [opts[0]],
+            # No default arg, use session_state exclusively
             format_func=get_label,
             key="pivot_row",
             max_selections=2,
@@ -71,10 +79,14 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
             p_row = [opts[1]] if len(opts) > 1 else [opts[0]]
 
     with pivot_col_col:
+        # Initialize default if not set
+        if "pivot_col" not in st.session_state:
+            st.session_state["pivot_col"] = []
+            
         p_col = st.multiselect(
             "欄維度(Column)",
             opts,
-            default=[],
+            # No default arg
             format_func=get_label,
             key="pivot_col",
             max_selections=2,
@@ -83,6 +95,9 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
             p_col = []
 
     with pivot_sum_col:
+        if "pivot_sum" not in st.session_state:
+            st.session_state["pivot_sum"] = "CNT"
+            
         p_sum = st.selectbox("計算欄", ["CNT"], key="pivot_sum")
 
     return p_tab, p_row, p_col, p_sum
@@ -98,7 +113,7 @@ def render_filter_sidebar(
         df_decode: Decoded DataFrame
         chinese_columns: Dict mapping column keys to Chinese names
     """
-    st.sidebar.header("Filters")
+    st.sidebar.header("篩選器")
 
     def get_label(key):
         return chinese_columns.get(key, key)
@@ -222,7 +237,7 @@ def render_pivot_tabs(
 
                                 if not tab_ref_df.empty:
                                     st.write(f"**當前分組 ({tab_key}) 的明細資料:**")
-                                    st.dataframe(tab_ref_df, use_container_width=True)
+                                    st.dataframe(tab_ref_df, width="stretch")
                                     st.write(f"**筆數:** {len(tab_ref_df)} 筆")
                                     if "CNT" in tab_ref_df.columns:
                                         total_cnt = tab_ref_df["CNT"].sum()
@@ -232,7 +247,7 @@ def render_pivot_tabs(
 
                                 st.write("---")
                                 st.write("**完整 ref_df (所有分組):**")
-                                st.dataframe(ref_df, use_container_width=True)
+                                st.dataframe(ref_df, width="stretch")
 
                             # Try exact or str match for key
                             val = ref_totals.get(tab_key)

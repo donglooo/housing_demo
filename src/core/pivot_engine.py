@@ -272,7 +272,27 @@ def apply_filters(
     # Apply user-selected filters
     for col in target_columns:
         if col in filters:
-            mask &= df[col].isin(filters[col])
+            vals = list(filters[col])
+            
+            # Robust Type Coercion
+            # Solves issue where saved config has strings ("2024") but data is int (2024)
+            col_dtype = df[col].dtype
+            
+            if pd.api.types.is_numeric_dtype(col_dtype):
+                try:
+                    # Convert to float (matches both float and int in pandas isin)
+                    vals = [float(v) for v in vals]
+                except (ValueError, TypeError):
+                    pass
+            elif pd.api.types.is_string_dtype(col_dtype) or pd.api.types.is_object_dtype(col_dtype):
+                 try:
+                     # Ensure values are strings
+                     vals = [str(v) for v in vals]
+                 except:
+                     pass
+
+            mask &= df[col].isin(vals)
+
         if col == pivot_tab:
             # Pivot tab dimension must not be null
             mask &= ~df[col].isna()
@@ -485,7 +505,12 @@ def add_totals(pivot: pd.DataFrame) -> pd.DataFrame:
     pivot_with_totals.loc[pivot.index, pivot.columns] = pivot.values
 
     # Ensure numeric types
-    pivot_with_totals = pivot_with_totals.apply(pd.to_numeric, errors="ignore")
+    # Ensure numeric types
+    for col in pivot_with_totals.columns:
+        try:
+            pivot_with_totals[col] = pd.to_numeric(pivot_with_totals[col])
+        except (ValueError, TypeError):
+            pass
 
     return pivot_with_totals
 
@@ -635,10 +660,10 @@ def calculate_weighted_averages(
     for dim in relevant_dims:
         if dim in codebook and "avg" in codebook[dim]:
             cfg = codebook[dim]["avg"]
-            # Use dim name or dim key as label suffix
-            label = codebook[dim].get("name", dim)
+            # Use specific name from avg config if available, else construct
+            avg_name = cfg.get("name", f"平均{codebook[dim].get('name', dim)}")
             avg_specs.append(
-                {"name": f"平均{label}", "num": cfg["num"], "den": cfg["den"]}
+                {"name": avg_name, "num": cfg["num"], "den": cfg["den"]}
             )
 
     if not avg_specs:

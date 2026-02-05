@@ -34,6 +34,11 @@ def get_base_paths() -> Tuple[str, str, str]:
     return BASE_DIR, DATA_DIR, CONFIG_DIR
 
 
+# Initialize global paths
+_, _, CONFIG_DIR = get_base_paths()
+CODEBOOK_PATH = os.path.join(CONFIG_DIR, "codebook.yaml")
+
+
 def resolve_data_path(raw_path: str, base_dir: str = None) -> str:
     """
     Convert relative paths to absolute paths.

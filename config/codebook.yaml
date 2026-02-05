@@ -68,8 +68,9 @@ ownership:
       98: "資料異常(等於0)"
       99: "資料缺失"
     avg:
-      num: 'SUM_AGE'
-      den: 'CNT_AGE'
+      name: "平均坪數"
+      num: 'SUM_AREA'
+      den: 'CNT_AREA'
     group_type: "grouping_set"
 
   BUILDING_AGE_GROUP:
@@ -89,6 +90,7 @@ ownership:
       98: "資料異常(小於0)"
       99: "資料缺失"
     avg:
+      name: "平均屋齡"
       num: 'SUM_AREA'
       den: 'CNT_AREA'
     group_type: "grouping_set"
@@ -118,6 +120,7 @@ ownership:
       98: "資料異常(0層以下)"
       99: "資料缺失"
     avg:
+      name: "平均樓層"
       num: 'SUM_FLOOR'
       den: 'CNT_FLOOR'
     group_type: "grouping_set"
@@ -147,9 +150,20 @@ ownership:
       99: "資料缺失"
     group_type: "grouping_set"
 
+  REGION:
+    name: "區域"
+    dtype: "category"
+    codes:
+      1: "北部區域"
+      2: "中部區域"
+      3: "南部區域"
+      4: "東部區域"
+      5: "福建省"
+
 columns_order:
   - DATA_YR
   - IS_OWNED
+  - REGION
   - COUNTY
   - TOT_AREA_PING_GROUP
   - BUILDING_AGE_GROUP
@@ -220,6 +234,7 @@ tax:
       98: "資料異常(等於0)"
       99: "資料缺失"
     avg:
+      name: "平均坪數"
       num: 'SUM_AREA'
       den: 'CNT_AREA'
     group_type: "grouping_set"
@@ -271,6 +286,7 @@ tax:
       98: "資料異常(0層以下)"
       99: "資料缺失"
     avg:
+      name: "平均樓層"
       num: 'SUM_FLOOR'
       den: 'CNT_FLOOR'
     group_type: "grouping_set"
@@ -326,8 +342,19 @@ tax:
       99: "資料缺失"
     group_type: "grouping_set"
 
+  REGION:
+    name: "區域"
+    dtype: "category"
+    codes:
+      1: "北部區域"
+      2: "中部區域"
+      3: "南部區域"
+      4: "東部區域"
+      5: "福建省"
+
 columns_order:
   - DATA_YR
+  - REGION
   - COUNTY
   - TOWN
   - AREA_ALL_SUM_PING_GROUP
@@ -401,6 +428,7 @@ power:
       98: "資料異常(等於0)"
       99: "資料缺失"
     avg:
+      name: "平均坪數"
       num: 'SUM_AREA'
       den: 'CNT_AREA'
     group_type: "grouping_set"
@@ -422,6 +450,7 @@ power:
       98: "資料異常(小於0)"
       99: "資料缺失"
     avg:
+      name: "平均屋齡"
       num: 'SUM_AGE'
       den: 'CNT_AGE'
     group_type: "grouping_set"
@@ -452,6 +481,7 @@ power:
       98: "資料異常(0層以下)"
       99: "資料缺失"
     avg:
+      name: "平均樓層"
       num: 'SUM_FLOOR'
       den: 'CNT_FLOOR'
     group_type: "grouping_set"
@@ -475,12 +505,24 @@ power:
       3: "3期"
       4: "4期以上"
     avg:
+      name: "平均連續低度用電期數"
       num: 'SUM_LOW_POWER_CON'
       den: 'CNT_LOW_POWER_CON'
     group_type: "rollup"
 
+  REGION:
+    name: "區域"
+    dtype: "category"
+    codes:
+      1: "北部區域"
+      2: "中部區域"
+      3: "南部區域"
+      4: "東部區域"
+      5: "福建省"
+
 columns_order:
   - DATA_YR
+  - REGION
   - COUNTY
   - TOWN
   - POWER_TYPE
