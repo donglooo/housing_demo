@@ -57,7 +57,7 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
         # Initialize default if not set
         if "pivot_tab" not in st.session_state and opts:
             st.session_state["pivot_tab"] = opts[0]
-            
+
         p_tab = st.selectbox(
             "分組依據(Tab)", opts, format_func=get_label, key="pivot_tab"
         )
@@ -66,7 +66,7 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
         # Initialize default if not set
         if "pivot_row" not in st.session_state:
             st.session_state["pivot_row"] = [opts[1]] if len(opts) > 1 else [opts[0]]
-            
+
         p_row = st.multiselect(
             "列維度(Row)",
             opts,
@@ -82,7 +82,7 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
         # Initialize default if not set
         if "pivot_col" not in st.session_state:
             st.session_state["pivot_col"] = []
-            
+
         p_col = st.multiselect(
             "欄維度(Column)",
             opts,
@@ -97,7 +97,7 @@ def render_pivot_selector(chinese_columns: Dict[str, str]) -> tuple:
     with pivot_sum_col:
         if "pivot_sum" not in st.session_state:
             st.session_state["pivot_sum"] = "CNT"
-            
+
         p_sum = st.selectbox("計算欄", ["CNT"], key="pivot_sum")
 
     return p_tab, p_row, p_col, p_sum
@@ -495,15 +495,21 @@ def render_pivot_tabs(
 
             # --- Display Source Data for this Tab ---
             if filtered_df_by_tab is not None and tab_key in filtered_df_by_tab:
-                with st.expander("查看此分組的原始明細資料（交叉表數據來源）", expanded=False):
+                with st.expander(
+                    "查看此分組的原始明細資料（交叉表數據來源）", expanded=False
+                ):
                     tab_filtered_df = filtered_df_by_tab[tab_key]
-                    
+
                     if not tab_filtered_df.empty:
                         st.write(f"**當前分組 ({tab_key}) 的篩選後明細:**")
-                        st.caption("此為經過篩選條件後，用於生成上方交叉表的完整原始資料")
+                        st.caption(
+                            "此為經過篩選條件後，用於生成上方交叉表的完整原始資料"
+                        )
                         # Show sample or all data
                         if len(tab_filtered_df) > 1000:
-                            st.warning(f"資料筆數較多 ({len(tab_filtered_df):,} 筆)，僅顯示前 1000 筆")
+                            st.warning(
+                                f"資料筆數較多 ({len(tab_filtered_df):,} 筆)，僅顯示前 1000 筆"
+                            )
                             st.dataframe(tab_filtered_df.head(1000), width="stretch")
                         else:
                             st.dataframe(tab_filtered_df, width="stretch")
@@ -513,12 +519,14 @@ def render_pivot_tabs(
                             st.write(f"**CNT 總和:** {total_cnt:,.0f}")
                     else:
                         st.info(f"此分組 ({tab_key}) 無明細資料")
-                    
+
                     # Show ref_df as technical detail
                     if ref_df_by_tab is not None and tab_key in ref_df_by_tab:
                         with st.expander("ref_df（參考總計用）", expanded=False):
                             tab_ref_df = ref_df_by_tab[tab_key]
-                            st.caption("此為計算「參考總計」時使用的數據（pivot維度強制為Null的總計列）")
+                            st.caption(
+                                "此為計算「參考總計」時使用的數據（pivot維度強制為Null的總計列）"
+                            )
                             if not tab_ref_df.empty:
                                 st.dataframe(tab_ref_df, width="stretch")
                                 st.write(f"**筆數:** {len(tab_ref_df)} 筆")

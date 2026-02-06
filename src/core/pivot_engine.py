@@ -161,7 +161,7 @@ def compute_pivot_tables(
         for tab_val in unique_tabs:
             tab_ref = ref_df[ref_df[pivot_tab] == tab_val].copy()
             ref_df_by_tab[tab_val] = tab_ref
-    
+
     # Create per-tab filtered DataFrames (actual data used for pivot table)
     filtered_df_by_tab = {}
     for tab_val in unique_tabs:
@@ -172,7 +172,7 @@ def compute_pivot_tables(
     results = {}
     col_totals_tab = []
     row_totals_tab = []
-    
+
     all_totals_tab = []
 
     for tab_val in unique_tabs:
@@ -290,23 +290,25 @@ def apply_filters(
     for col in target_columns:
         if col in filters:
             vals = list(filters[col])
-            
+
             # Robust Type Coercion
             # Solves issue where saved config has strings ("2024") but data is int (2024)
             col_dtype = df[col].dtype
-            
+
             if pd.api.types.is_numeric_dtype(col_dtype):
                 try:
                     # Convert to float (matches both float and int in pandas isin)
                     vals = [float(v) for v in vals]
                 except (ValueError, TypeError):
                     pass
-            elif pd.api.types.is_string_dtype(col_dtype) or pd.api.types.is_object_dtype(col_dtype):
-                 try:
-                     # Ensure values are strings
-                     vals = [str(v) for v in vals]
-                 except:
-                     pass
+            elif pd.api.types.is_string_dtype(
+                col_dtype
+            ) or pd.api.types.is_object_dtype(col_dtype):
+                try:
+                    # Ensure values are strings
+                    vals = [str(v) for v in vals]
+                except:
+                    pass
 
             mask &= df[col].isin(vals)
 
@@ -671,7 +673,7 @@ def calculate_weighted_averages(
     p_cols = [pivot_cols] if isinstance(pivot_cols, str) else pivot_cols
 
     # We check all selected dimensions for avg config
-    relevant_dims = set(p_rows + p_cols)
+    relevant_dims = set(p_cols)
     avg_specs = []
 
     for dim in relevant_dims:
@@ -679,9 +681,7 @@ def calculate_weighted_averages(
             cfg = codebook[dim]["avg"]
             # Use specific name from avg config if available, else construct
             avg_name = cfg.get("name", f"平均{codebook[dim].get('name', dim)}")
-            avg_specs.append(
-                {"name": avg_name, "num": cfg["num"], "den": cfg["den"]}
-            )
+            avg_specs.append({"name": avg_name, "num": cfg["num"], "den": cfg["den"]})
 
     if not avg_specs:
         return {}

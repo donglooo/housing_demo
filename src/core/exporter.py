@@ -7,9 +7,10 @@ It re-runs the pivot queries to get fresh data and organizes them into sheets wi
 
 import pandas as pd
 import io
-import streamlit as st
+import os
+import ast
+import re
 from typing import List, Dict
-import datetime
 
 # Import pivot engine to re-run queries
 from src.core.data_loader import load_data, load_codebook
@@ -17,36 +18,39 @@ from src.core.pivot_engine import compute_pivot_tables
 from src.core.data_loader import decode_data
 from src.core.config_manager import CODEBOOK_PATH, get_codebook_section
 
+
 def export_all_pivots_to_excel(saved_configs: List[Dict]) -> bytes:
     """
     Export all saved pivot configurations to a single Excel file.
-    
+
     Returns:
         bytes: The Excel file content.
     """
     output = io.BytesIO()
-    
+
     # Sort configs by Chapter for logical order
-    # Handle missing chapters or different formats if needed
+    # Robust natural sort for chapter numbers like "4-1-1"
     def get_sort_key(cfg):
         chap = cfg.get("chapter", "")
-        # Try to sort numerically if possible (e.g. 4-1-1 -> [4, 1, 1])
+        if not chap or pd.isna(chap):
+            return (float("inf"),)
         try:
-            return [int(x) for x in chap.split("-") if x.isdigit()]
-        except:
-            return chap
-            
+            return tuple(int(x) for x in str(chap).split("-"))
+        except (ValueError, AttributeError):
+            return (float("inf"), str(chap))
+
     sorted_configs = sorted(saved_configs, key=get_sort_key)
-    
+
     # Load Codebook once (assumed constant for all)
     # We might need to load data per config if they use different sources
     # Optimization: Cache data loaders if multiple configs use same source
     data_cache = {}
     codebook = load_codebook(CODEBOOK_PATH)
+    error_log = []
 
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         workbook = writer.book
-        
+
         # --- 1. Table of Contents (TOC) ---
         toc_sheet_name = "目錄"
         # Create TOC sheet
@@ -56,53 +60,80 @@ def export_all_pivots_to_excel(saved_configs: List[Dict]) -> bytes:
             name = cfg.get("name", "未命名")
             unit = cfg.get("unit", "")
             unit_str = f"({unit})" if unit else ""
-            
+
             # Sheet name: Chapter (sanitized)
             # Excel sheet names max 31 chars, no special chars : \ / ? * [ ]
             sheet_name = str(chap) if chap else f"Report_{sorted_configs.index(cfg)}"
             sheet_name = "".join([c for c in sheet_name if c not in r"[]:*?/\\"])[:31]
-            
+
             # Store for linking
-            cfg["_sheet_name"] = sheet_name 
-            
-            toc_data.append({
-                "章節": chap,
-                "標題": f"{name} {unit_str}",
-                "連結": f"internal:'{sheet_name}'!A1"
-            })
-            
+            cfg["_sheet_name"] = sheet_name
+
+            toc_data.append(
+                {
+                    "章節": chap,
+                    "標題": f"{name} {unit_str}",
+                    "連結": f"internal:'{sheet_name}'!A1",
+                }
+            )
+
         df_toc = pd.DataFrame(toc_data)
         df_toc.to_excel(writer, sheet_name=toc_sheet_name, index=False)
-        
+
         # Apply formatting to TOC
         toc_sheet = writer.sheets[toc_sheet_name]
         # Set column widths
-        toc_sheet.set_column('A:A', 15) # Chapter
-        toc_sheet.set_column('B:B', 60) # Title
-        
+        toc_sheet.set_column("A:A", 15)  # Chapter
+        toc_sheet.set_column("B:B", 60)  # Title
+
         # Write hyperlinks manually for the "連結" column?
         # Pandas writes URLs automatically if they look like URLs, but internal links might need help or the 'internal:' prefix works directly in some versions?
         # Actually pandas writes strings. Let's use xlsxwriter to write links if needed.
         # But 'internal:' syntax is for helpful reference, actual link needs `write_url`.
         # Simplified: Just write the sheet name. User requested "embedded links".
         # We can iterate and overwrite the cell with a URL.
-        
-        link_format = workbook.add_format({'font_color': 'blue', 'underline': 1})
+
+        link_format = workbook.add_format({"font_color": "blue", "underline": 1})
         for i, row in df_toc.iterrows():
             # Row 0 is header. Data starts at row 1.
             # Link to the Sheet
             sheet_n = sorted_configs[i]["_sheet_name"]
-            toc_sheet.write_url(i + 1, 1, f"internal:'{sheet_n}'!A1", string=row["標題"], cell_format=link_format)
-
+            toc_sheet.write_url(
+                i + 1,
+                1,
+                f"internal:'{sheet_n}'!A1",
+                string=row["標題"],
+                cell_format=link_format,
+            )
 
         # --- 2. Report Sheets ---
         for cfg in sorted_configs:
             try:
-                # Extract Params
                 data_path = cfg.get("data_source")
-                if not data_path:
-                    continue
-                    
+
+                # Fix: Handle cross-platform paths (e.g. Mac to Windows)
+                if data_path:
+                    if not os.path.exists(data_path):
+                        # Try to find 'data' segment
+                        norm_path = data_path.replace("\\", "/")
+                        if "/data/" in norm_path:
+                            suffix = norm_path.split("/data/")[-1]
+                            local_candidate = os.path.join("data", suffix)
+                            if os.path.exists(local_candidate):
+                                data_path = local_candidate
+                            else:
+                                # Fallback: try finding file by name only
+                                filename = os.path.basename(norm_path)
+                                for root, dirs, files in os.walk("data"):
+                                    if filename in files:
+                                        data_path = os.path.join(root, filename)
+                                        break
+
+                if not data_path or not os.path.exists(data_path):
+                    raise FileNotFoundError(
+                        f"Data file not found: {cfg.get('data_source')}"
+                    )
+
                 # Load Data (Cached)
                 if data_path not in data_cache:
                     df = load_data(data_path)
@@ -115,24 +146,32 @@ def export_all_pivots_to_excel(saved_configs: List[Dict]) -> bytes:
                     elif "使用權" in data_path:
                         d_type = "usage"
                     else:
-                        d_type = "ownership" # Default
-                        
+                        d_type = "ownership"  # Default
+
                     cb_sec = get_codebook_section(codebook, d_type)
                     df_decode = decode_data(df, cb_sec)
                     data_cache[data_path] = (df_decode, cb_sec)
-                
+
                 df_decode, codebook_sel = data_cache[data_path]
-                
+
                 # Re-run Query
                 # Reconstruct filter items
                 filters = cfg.get("filters", {})
+
+                # Fix: Handle stringified filters
+                if isinstance(filters, str):
+                    try:
+                        filters = ast.literal_eval(filters)
+                    except Exception:
+                        filters = {}
+
                 filter_items = []
                 for k, v in filters.items():
                     # v must be tuple/list
                     if isinstance(v, (list, tuple)):
                         filter_items.append((k, tuple(sorted(v))))
                 filter_items = tuple(sorted(filter_items))
-                
+
                 # Create result
                 # Note: pivot_row/col might be lists or strings
                 (
@@ -152,43 +191,78 @@ def export_all_pivots_to_excel(saved_configs: List[Dict]) -> bytes:
                     cfg.get("pivot_col"),
                     cfg.get("pivot_sum"),
                     filter_items,
-                    codebook_sel
+                    codebook_sel,
                 )
-                
+
                 # Extract specific focus tab if set, otherwise first
                 focus = cfg.get("focus_tab")
                 if not focus or focus not in results or results[focus] is None:
                     # Fallback to first available
                     if unique_tabs:
                         focus = unique_tabs[0]
-                
+
                 if focus and focus in results and results[focus] is not None:
-                    # Get the formatting options? 
+                    # Get the formatting options?
                     # Saved config doesn't store 'axis' preference. Default to 0?
                     # We usually dump the raw numbers or percentages?
                     # User asked for "statistical results".
                     # Let's dump the Pivot Table (counts) + Percentages if possible?
                     # Or just the main Pivot Table.
                     # Let's output the Main Pivot with Totals.
-                    
+
                     res_data = results[focus]
                     df_val = res_data["pivot"]
-                    df_pct = res_data["row_pct"] # Row percentages
-                    
+                    df_pct = res_data["row_pct"]  # Row percentages
+
                     # Create Sheet
                     sheet_n = cfg["_sheet_name"]
-                    
+
                     # Write Title Block
                     # Row 0: Title
                     current_sheet = workbook.add_worksheet(sheet_n)
-                    
-                    title_format = workbook.add_format({'bold': True, 'font_size': 14})
-                    unit_str = f" (單位: {cfg.get('unit', '')})" if cfg.get('unit') else ""
+
+                    title_format = workbook.add_format({"bold": True, "font_size": 14})
+                    unit_str = (
+                        f" (單位: {cfg.get('unit', '')})" if cfg.get("unit") else ""
+                    )
                     full_title = f"{cfg.get('name', '')}{unit_str}"
                     current_sheet.write(0, 0, full_title, title_format)
-                    
+
+                    # Row 1: Description
                     # Row 1: Description
                     desc = cfg.get("description", "")
+
+                    # Calculate dynamic masking stats
+                    p_tab = cfg.get("pivot_tab")
+                    local_masked = (
+                        masked_df[masked_df[p_tab] == focus]
+                        if not masked_df.empty and p_tab in masked_df.columns
+                        else []
+                    )
+                    masked_cnt = (
+                        len(local_masked) if hasattr(local_masked, "__len__") else 0
+                    )
+
+                    if masked_cnt > 0:
+                        ref_cnt = ref_totals.get(focus, 0)
+                        dynamic_msg = f"此分組包含 {masked_cnt} 組被遮蔽資料（樣本數小於 3 筆）。（而未經篩選及遮蔽的本分組總計應為: {ref_cnt:,.0f} 宅）"
+
+                        # Remove old auto-generated msg if present to avoid duplication
+                        if desc:
+                            # Regex to remove old pattern (non-greedy match)
+                            desc = re.sub(
+                                r"此分組包含 \d+ 組被遮蔽資料.*?宅）",
+                                "",
+                                desc,
+                                flags=re.DOTALL,
+                            ).strip()
+                            if desc:
+                                desc += "\n" + dynamic_msg
+                            else:
+                                desc = dynamic_msg
+                        else:
+                            desc = dynamic_msg
+
                     if desc:
                         current_sheet.write(1, 0, desc)
                         start_row = 3
@@ -199,17 +273,17 @@ def export_all_pivots_to_excel(saved_configs: List[Dict]) -> bytes:
                     # 1. Base Setup
                     cols = [c for c in df_val.columns if c != "全國"]
                     hybrid_df = pd.DataFrame(index=df_val.index)
-                    
+
                     # 2. Add '全國' (Total) if exists
                     if "全國" in df_val.columns:
                         hybrid_df["全國"] = df_val["全國"]
-                        
+
                     # 3. Add Averages (if available)
                     avg_data = res_data.get("avg_data")
                     if avg_data:
                         rows_avg = avg_data["rows_avg"]
                         total_avg = avg_data["total_avg"]
-                        # Assume first row is Total if "全國" exists in index? 
+                        # Assume first row is Total if "全國" exists in index?
                         # Or typically the first row is filtered out in UI but here we export everything?
                         # In ui_components line 369, it gets total_row_key = hybrid_df.index[0] and updates it.
                         if not hybrid_df.index.empty:
@@ -234,41 +308,65 @@ def export_all_pivots_to_excel(saved_configs: List[Dict]) -> bytes:
 
                     # Write Data
                     hybrid_df.to_excel(writer, sheet_name=sheet_n, startrow=start_row)
-                    
+
                     # --- Formatting ---
                     worksheet = writer.sheets[sheet_n]
                     workbook = writer.book
-                    
-                    fmt_count = workbook.add_format({'num_format': '#,##0'})
-                    fmt_pct = workbook.add_format({'num_format': '0.00%'})
-                    fmt_avg = workbook.add_format({'num_format': '#,##0.00'})
-                    
+
+                    fmt_count = workbook.add_format({"num_format": "#,##0"})
+                    fmt_pct = workbook.add_format({"num_format": "0.00%"})
+                    fmt_avg = workbook.add_format({"num_format": "#,##0.00"})
+
                     # Index levels determine where data columns start
                     index_levels = hybrid_df.index.nlevels
-                    
+
                     # Set Index Column Widths
                     worksheet.set_column(0, index_levels - 1, 15)
-                    
+
                     # Apply formats to data columns
                     for i, col_name in enumerate(hybrid_df.columns):
                         excel_col = index_levels + i
                         col_str = str(col_name)
-                        
+
                         # Determine format
                         if "(%)" in col_str:
                             cell_fmt = fmt_pct
-                        elif "平均" in col_str or "age" in col_str.lower(): # Simple heuristic for averages
-                             cell_fmt = fmt_avg
+                        elif (
+                            "平均" in col_str or "age" in col_str.lower()
+                        ):  # Simple heuristic for averages
+                            cell_fmt = fmt_avg
                         else:
-                             cell_fmt = fmt_count
-                        
+                            cell_fmt = fmt_count
+
                         # Set width 15 and format
                         worksheet.set_column(excel_col, excel_col, 15, cell_fmt)
-                    
+
+                # ... (inside loop)
             except Exception as e:
-                # If error, write an error sheet or skip
-                print(f"Error exporting {cfg.get('name')}: {e}")
-                pass
+                # Store error for reporting
+                error_log.append(
+                    {
+                        "Chapter": cfg.get("chapter"),
+                        "Name": cfg.get("name"),
+                        "Error": str(e),
+                    }
+                )
+                continue
+
+        # --- 3. Error Log Sheet (if any errors) ---
+        if error_log:
+            err_sheet = writer.book.add_worksheet("Errors")
+            err_sheet.write(0, 0, "Export Errors")
+            err_sheet.write(0, 1, "Please check configuration or data source.")
+
+            headers = ["Chapter", "Name", "Error"]
+            for col, h in enumerate(headers):
+                err_sheet.write(1, col, h)
+
+            for i, err in enumerate(error_log):
+                err_sheet.write(i + 2, 0, str(err["Chapter"]))
+                err_sheet.write(i + 2, 1, str(err["Name"]))
+                err_sheet.write(i + 2, 2, str(err["Error"]))
 
     output.seek(0)
     return output.getvalue()
