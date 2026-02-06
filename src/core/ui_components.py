@@ -209,7 +209,7 @@ def render_pivot_tabs(
 
                     # Display calculation details in container
                     if ref_totals:
-                        with st.expander("🔍 查看參考總計計算明細", expanded=False):
+                        with st.expander("查看參考總計計算明細", expanded=False):
                             st.write("**參考總計字典 (ref_totals):**")
                             st.json(ref_totals)
 

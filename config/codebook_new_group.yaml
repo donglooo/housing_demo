@@ -1,0 +1,494 @@
+ownership:
+  DATA_YR:
+    name: "資料年度"
+    dtype: "Int64"
+    group_type: "fixed"
+  
+  COUNTY:
+    name: "縣市"
+    dtype: "category"
+    codes:
+      1: "新北市"
+      2: "臺北市"
+      3: "臺中市"
+      4: "臺南市"
+      5: "高雄市"
+      6: "宜蘭縣"
+      7: "桃園市"
+      8: "新竹縣"
+      9: "苗栗縣"
+      10: "彰化縣"
+      11: "南投縣"
+      12: "雲林縣"
+      13: "嘉義縣"
+      14: "屏東縣"
+      15: "臺東縣"
+      16: "花蓮縣"
+      17: "澎湖縣"
+      18: "基隆市"
+      19: "新竹市"
+      20: "嘉義市"
+      21: "金門縣"
+      22: "連江縣"
+      98: "資料異常(等於0)"
+      99: "資料缺失"
+    group_type: "rollup"
+
+  TOWNSHIP:
+    name: "行政區"
+    dtype: "category"
+    group_type: "rollup"
+
+  OWNED_TYPE:
+    name: "歸戶類型"
+    dtype: "category"
+    codes:
+      11: "無人持有"
+      12: "單獨持有"
+      13: "多人持有"
+    group_type: "fixed"
+
+  TOT_AREA_PING_GROUP:
+    name: "坪數區間"
+    dtype: "Int64"
+    codes:
+      11: "15坪以下"
+      12: "15-25坪"
+      13: "15-25坪"
+      14: "25-35坪"
+      15: "25-35坪"
+      16: "35-45坪"
+      17: "35-45坪"
+      18: "45-55坪"
+      19: "45-55坪"
+      20: "55-65坪"
+      21: "55-65坪"
+      22: "65坪以上"
+      23: "65坪以上"
+      98: "資料異常(等於0)"
+      99: "資料缺失"
+    avg:
+      num: 'SUM_AGE'
+      den: 'CNT_AGE'
+    group_type: "grouping_set"
+
+  BUILDING_AGE_GROUP:
+    name: "屋齡區間"
+    dtype: "Int64"
+    codes:
+      11: "1年以下"
+      12: "1-5年"
+      13: "5-10年"
+      14: "10-15年"
+      15: "15-20年"
+      16: "20-25年"
+      17: "25-30年"
+      18: "30-40年"
+      19: "40-50年"
+      20: "50年以上"
+      98: "資料異常(小於0)"
+      99: "資料缺失"
+    avg:
+      num: 'SUM_AREA'
+      den: 'CNT_AREA'
+    group_type: "grouping_set"
+
+  MATERIALS_GROUP_NEW:
+    name: "構造別"
+    dtype: "Int64"
+    codes:
+      11: "壁式預鑄鋼筋混凝土造"
+      12: "鋼骨鋼筋混凝土造"
+      13: "鋼筋混凝土造"
+      14: "加強磚造"
+      90: "其他"
+      99: "資料缺失"
+    group_type: "grouping_set"
+
+  BUILDING_FLOOR_GROUP:
+    name: "樓層區間"
+    dtype: "Int64"
+    codes:
+      11: "1-3層"
+      12: "4-5層"
+      13: "6-10層"
+      14: "11-15層"
+      15: "16-20層"
+      16: "20層以上"
+      98: "資料異常(0層以下)"
+      99: "資料缺失"
+    avg:
+      num: 'SUM_FLOOR'
+      den: 'CNT_FLOOR'
+    group_type: "grouping_set"
+
+  PURPOSE_GROUP:
+    name: "使用類別"
+    dtype: "category"
+    codes:
+      1: "住家用"
+      2: "住商用"
+      3: "住工用"
+      4: "國有住宅"
+      5: "其他"
+      99: "資料缺失"
+    group_type: "grouping_set"
+
+  REGISTER_REASON_GROUP:
+    name: "登記原因"
+    dtype: "category"
+    codes:
+      1: "買賣"
+      2: "第一次登記"
+      3: "繼承"
+      4: "贈與"
+      5: "拍賣"
+      6: "其他"
+      99: "資料缺失"
+    group_type: "grouping_set"
+
+columns_order:
+  - DATA_YR
+  - IS_OWNED
+  - COUNTY
+  - TOT_AREA_PING_GROUP
+  - BUILDING_AGE_GROUP
+  - MATERIALS_GROUP_NEW
+  - BUILDING_FLOOR_GROUP
+  - PURPOSE_GROUP
+  - REGISTER_REASON_GROUP
+  - CNT
+
+tax:
+  DATA_YR:
+    name: "資料年度"
+    dtype: "Int64"
+    group_type: "fixed"
+ 
+  COUNTY:
+    name: "縣市"
+    dtype: "category"
+    codes:
+      1: "新北市"
+      2: "臺北市"
+      3: "臺中市"
+      4: "臺南市"
+      5: "高雄市"
+      6: "宜蘭縣"
+      7: "桃園市"
+      8: "新竹縣"
+      9: "苗栗縣"
+      10: "彰化縣"
+      11: "南投縣"
+      12: "雲林縣"
+      13: "嘉義縣"
+      14: "屏東縣"
+      15: "臺東縣"
+      16: "花蓮縣"
+      17: "澎湖縣"
+      18: "基隆市"
+      19: "新竹市"
+      20: "嘉義市"
+      21: "金門縣"
+      22: "連江縣"
+      98: "資料異常(等於0)"
+      99: "資料缺失"
+    group_type: "rollup"
+
+  TOWN:
+    name: "行政區"
+    dtype: "category"
+    group_type: "rollup"
+
+  AREA_ALL_SUM_PING_GROUP:
+    name: "坪數區間"
+    dtype: "Int64"
+    codes:
+      11: "15坪以下"
+      12: "15-20坪"
+      13: "20-25坪"
+      14: "25-30坪"
+      15: "30-35坪"
+      16: "35-40坪"
+      17: "40-45坪"
+      18: "45-50坪"
+      19: "50-55坪"
+      20: "55-60坪"
+      21: "60-65坪"
+      22: "65-70坪"
+      23: "70坪以上"
+      98: "資料異常(等於0)"
+      99: "資料缺失"
+    avg:
+      num: 'SUM_AREA'
+      den: 'CNT_AREA'
+    group_type: "grouping_set"
+
+  HOU_DEPR_YEAR_OLD_GROUP:
+    name: "屋齡區間"
+    dtype: "Int64"
+    codes:
+      11: "1年以下"
+      12: "1-5年"
+      13: "5-10年"
+      14: "10-15年"
+      15: "15-20年"
+      16: "20-25年"
+      17: "25-30年"
+      18: "30-40年"
+      19: "40-50年"
+      20: "50年以上"
+      98: "資料異常(小於0)"
+      99: "資料缺失"
+    avg:
+      num: 'SUM_AGE'
+      den: 'CNT_AGE'
+    group_type: "grouping_set"
+
+  STRUC_MAX_GROUP:
+    name: "構造別"
+    dtype: "Int64"
+    codes:
+      11: "鋼骨鋼筋混凝土造"
+      12: "鋼筋混凝土造"
+      13: "壁式預鑄鋼筋混凝土造"
+      14: "加強磚造"
+      90: "其他"
+      98: "資料異常(等於0)"
+      99: "資料缺失"
+    group_type: "grouping_set"
+
+  HOU_FLOOR_MAX_GROUP:
+    name: "樓層區間"
+    dtype: "Int64"
+    codes:
+      11: "1-3層"
+      12: "4-5層"
+      13: "6-10層"
+      14: "11-15層"
+      15: "16-20層"
+      16: "20層以上"
+      98: "資料異常(0層以下)"
+      99: "資料缺失"
+    avg:
+      num: 'SUM_FLOOR'
+      den: 'CNT_FLOOR'
+    group_type: "grouping_set"
+
+  REGISTER_REASON_GROUP:
+    name: "登記原因"
+    dtype: "category"
+    codes:
+      1: "買賣"
+      2: "第一次登記"
+      3: "繼承"
+      4: "贈與"
+      5: "拍賣"
+      6: "其他"
+      99: "資料缺失"
+    group_type: "grouping_set"
+  
+  IS_REGIS_HOUSEHOLD:
+    name: "是否設籍"
+    dtype: "category"
+    codes:
+      0: "無"
+      1: "是(ADDRESS_ID比對)"
+      2: "是(地址比對)"
+      99: "資料缺失"
+    group_type: "grouping_set"
+  
+  OWNER_AGE_GROUP:
+    name: "所有權人年齡"
+    dtype: "Int64"
+    codes:
+      11: "18歲以下"
+      12: "18-25歲"
+      13: "25-35歲"
+      14: "35-45歲"
+      15: "45-55歲"
+      16: "55-65歲"
+      17: "65-75歲"
+      18: "75歲以上"
+      98: "資料異常(小於0)"
+      99: "資料缺失"
+    group_type: "grouping_set"
+  
+  EVENT_CON_GROUP:
+    name: "連續低度用電期數"
+    dtype: "Int64"
+    codes:
+      0: "0期"
+      1: "1期"
+      2: "2期"
+      3: "3期"
+      4: "4期以上"
+      99: "資料缺失"
+    group_type: "grouping_set"
+
+columns_order:
+  - DATA_YR
+  - COUNTY
+  - TOWN
+  - AREA_ALL_SUM_PING_GROUP
+  - HOU_DEPR_YEAR_OLD_GROUP
+  - STRUC_MAX_GROUP
+  - HOU_FLOOR_MAX_GROUP
+  - REGISTER_REASON_GROUP
+  - IS_REGIS_HOUSEHOLD
+  - OWNER_AGE_GROUP
+  - EVENT_CON_GROUP
+  - CNT
+
+power:
+  DATA_YR:
+    name: "資料年度"
+    dtype: "Int64"
+    group_type: "fixed"
+
+  COUNTY:
+    name: "縣市"
+    dtype: "category"
+    codes:
+      1: "新北市"
+      2: "台北市"
+      3: "台中市"
+      4: "台南市"
+      5: "高雄市"
+      6: "宜蘭縣"
+      7: "桃園市"
+      8: "新竹縣"
+      9: "苗栗縣"
+      10: "彰化縣"
+      11: "南投縣"
+      12: "雲林縣"
+      13: "嘉義縣"
+      14: "屏東縣"
+      15: "台東縣"
+      16: "花蓮縣"
+      17: "澎湖縣"
+      18: "基隆市"
+      19: "新竹市"
+      20: "嘉義市"
+      21: "金門縣"
+      22: "連江縣"
+      98: "資料異常(等於0)"
+      99: "資料缺失"
+    group_type: "rollup"
+
+  TOWN:
+    name: "行政區"
+    dtype: "category"
+    group_type: "rollup"
+
+  AREA_ALL_SUM_PING_GROUP:
+    name: "坪數區間"
+    dtype: "Int64"
+    codes:
+      11: "15坪以下"
+      12: "15-20坪"
+      13: "20-25坪"
+      14: "25-30坪"
+      15: "30-35坪"
+      16: "35-40坪"
+      17: "40-45坪"
+      18: "45-50坪"
+      19: "50-55坪"
+      20: "55-60坪"
+      21: "60-65坪"
+      22: "65-70坪"
+      23: "70坪以上"
+      98: "資料異常(等於0)"
+      99: "資料缺失"
+    avg:
+      num: 'SUM_AREA'
+      den: 'CNT_AREA'
+    group_type: "grouping_set"
+
+  HOU_DEPR_YEAR_OLD_GROUP:
+    name: "屋齡區間"
+    dtype: "Int64"
+    codes:
+      11: "1年以下"
+      12: "1-5年"
+      13: "5-10年"
+      14: "10-15年"
+      15: "15-20年"
+      16: "20-25年"
+      17: "25-30年"
+      18: "30-40年"
+      19: "40-50年"
+      20: "50年以上"
+      98: "資料異常(小於0)"
+      99: "資料缺失"
+    avg:
+      num: 'SUM_AGE'
+      den: 'CNT_AGE'
+    group_type: "grouping_set"
+
+  STRUC_MAX_GROUP:
+    name: "構造別"
+    dtype: "Int64"
+    codes:
+      11: "鋼骨鋼筋混凝土造"
+      12: "鋼筋混凝土造"
+      13: "壁式預鑄鋼筋混凝土造"
+      14: "加強磚造"
+      90: "其他"
+      98: "資料異常(等於0)"
+      99: "資料缺失"
+    group_type: "grouping_set"
+
+  HOU_FLOOR_MAX_GROUP:
+    name: "樓層區間"
+    dtype: "Int64"
+    codes:
+      11: "1-3層"
+      12: "4-5層"
+      13: "6-10層"
+      14: "11-15層"
+      15: "16-20層"
+      16: "20層以上"
+      98: "資料異常(0層以下)"
+      99: "資料缺失"
+    avg:
+      num: 'SUM_FLOOR'
+      den: 'CNT_FLOOR'
+    group_type: "grouping_set"
+
+  POWER_TYPE:
+    name: "是否低度用電"
+    dtype: "Int64"
+    codes:
+      0: "非低度用電(>60度)"
+      1: "低度用電(<=60度)"
+      98: "資料異常" # <0
+      99: "資料缺失" # Null
+    group_type: "rollup"
+  
+  EVENT_CON_GROUP:
+    name: "連續低度用電期數"
+    dtype: "Int64"
+    codes:
+      1: "半年"
+      2: "1年"
+      3: "1.5年"
+      4: "2年以上"
+    avg:
+      num: 'SUM_LOW_POWER_CON'
+      den: 'CNT_LOW_POWER_CON'
+    group_type: "rollup"
+
+columns_order:
+  - DATA_YR
+  - COUNTY
+  - TOWN
+  - POWER_TYPE
+  - EVENT_CON_GROUP
+  - AREA_ALL_SUM_PING_GROUP
+  - HOU_DEPR_YEAR_OLD_GROUP
+  - STRUC_MAX_GROUP
+  - HOU_FLOOR_MAX_GROUP
+  - CNT
+
+tax_power:
