@@ -69,10 +69,10 @@ def decode_data(df: pd.DataFrame, codebook: Dict) -> pd.DataFrame:
     # 1. Region Mapping (Based on Decoded COUNTY)
     if "COUNTY" in df.columns:
         region_map = {
-            "北部區域": ["臺北市", "新北市", "基隆市", "新竹市", "桃園市", "新竹縣", "宜蘭縣"],
-            "中部區域": ["臺中市", "苗栗縣", "彰化縣", "南投縣", "雲林縣"],
-            "南部區域": ["高雄市", "臺南市", "嘉義市", "嘉義縣", "屏東縣", "澎湖縣"],
-            "東部區域": ["花蓮縣", "臺東縣"],
+            "北部區域": ["臺北市", "台北市", "新北市", "基隆市", "新竹市", "桃園市", "新竹縣", "宜蘭縣"],
+            "中部區域": ["臺中市", "台中市", "苗栗縣", "彰化縣", "南投縣", "雲林縣"],
+            "南部區域": ["高雄市", "臺南市", "台南市", "嘉義市", "嘉義縣", "屏東縣", "澎湖縣"],
+            "東部區域": ["花蓮縣", "臺東縣", "台東縣"],
             "福建省": ["金門縣", "連江縣"]
         }
         # Invert map
@@ -81,7 +81,16 @@ def decode_data(df: pd.DataFrame, codebook: Dict) -> pd.DataFrame:
             for c in counties:
                 county_to_region[c] = region
         
+        
         df["REGION"] = df["COUNTY"].map(county_to_region)
+        
+        # Fill unmapped counties with "未分類" and log warning
+        unmapped_mask = df["REGION"].isna() & df["COUNTY"].notna()
+        if unmapped_mask.any():
+            unmapped_counties = df.loc[unmapped_mask, "COUNTY"].unique()
+            print(f"⚠️ Warning: The following counties are not mapped to any region: {list(unmapped_counties)}")
+            df.loc[unmapped_mask, "REGION"] = "未分類區域"
+
 
     return df
 

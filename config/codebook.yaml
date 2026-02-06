@@ -91,8 +91,8 @@ ownership:
       99: "資料缺失"
     avg:
       name: "平均屋齡"
-      num: 'SUM_AREA'
-      den: 'CNT_AREA'
+      num: 'SUM_AGE'
+      den: 'CNT_AGE'
     group_type: "grouping_set"
 
   MATERIALS_GROUP_NEW:
@@ -256,6 +256,7 @@ tax:
       98: "資料異常(小於0)"
       99: "資料缺失"
     avg:
+      name: "平均屋齡"
       num: 'SUM_AGE'
       den: 'CNT_AGE'
     group_type: "grouping_set"

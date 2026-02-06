@@ -167,7 +167,8 @@ def render_pivot_tabs(
     pivot_tab_col: Optional[str] = None,
     chinese_columns: Optional[Dict] = None,
     ref_totals: Optional[Dict] = None,
-    ref_df: Optional[pd.DataFrame] = None,
+    ref_df_by_tab: Optional[Dict] = None,
+    filtered_df_by_tab: Optional[Dict] = None,
 ) -> None:
     """
     Render pivot table tabs with styling.
@@ -178,9 +179,9 @@ def render_pivot_tabs(
         axis: Gradient axis (None, 0, or 1)
         masked_df: Optional DataFrame containing masked data
         pivot_tab_col: Column name identifying the tab dimension
-        chinese_columns: Mapping for column name display
-        ref_totals: Dictionary of reference totals (unfiltered universe count) per tab
-        ref_df: DataFrame containing reference data
+        chinese_columns: Dict of column key -> Chinese name
+        ref_totals: Optional dict of tab -> total count
+        ref_df_by_tab: Optional dict of tab -> DataFrame containing reference data for that tab
     """
     tabs = st.tabs([str(k) for k in unique_keys])
 
@@ -215,39 +216,6 @@ def render_pivot_tabs(
                             st.write(
                                 f"**當前分組鍵 (tab_key):** `{tab_key}` (型別: `{type(tab_key).__name__}`)"
                             )
-
-                            # Show ref_df details for this tab
-                            if ref_df is not None and not ref_df.empty:
-                                st.write("---")
-                                st.write("**📊 彙整前的明細資料 (ref_df):**")
-                                st.write(
-                                    "此為計算 ref_totals 前，符合條件的原始資料（pivot 軸為 Null 的總計列）"
-                                )
-
-                                # Filter ref_df for current tab
-                                try:
-                                    tab_ref_df = ref_df[
-                                        ref_df[pivot_tab_col] == tab_key
-                                    ]
-                                except Exception:
-                                    tab_ref_df = ref_df[
-                                        ref_df[pivot_tab_col].astype(str)
-                                        == str(tab_key)
-                                    ]
-
-                                if not tab_ref_df.empty:
-                                    st.write(f"**當前分組 ({tab_key}) 的明細資料:**")
-                                    st.dataframe(tab_ref_df, width="stretch")
-                                    st.write(f"**筆數:** {len(tab_ref_df)} 筆")
-                                    if "CNT" in tab_ref_df.columns:
-                                        total_cnt = tab_ref_df["CNT"].sum()
-                                        st.write(f"**CNT 總和:** {total_cnt:,.0f}")
-                                else:
-                                    st.warning(f"找不到分組 {tab_key} 的明細資料")
-
-                                st.write("---")
-                                st.write("**完整 ref_df (所有分組):**")
-                                st.dataframe(ref_df, width="stretch")
 
                             # Try exact or str match for key
                             val = ref_totals.get(tab_key)
@@ -524,6 +492,38 @@ def render_pivot_tabs(
                     styled,
                     height=dynamic_height,
                 )
+
+            # --- Display Source Data for this Tab ---
+            if filtered_df_by_tab is not None and tab_key in filtered_df_by_tab:
+                with st.expander("查看此分組的原始明細資料（交叉表數據來源）", expanded=False):
+                    tab_filtered_df = filtered_df_by_tab[tab_key]
+                    
+                    if not tab_filtered_df.empty:
+                        st.write(f"**當前分組 ({tab_key}) 的篩選後明細:**")
+                        st.caption("此為經過篩選條件後，用於生成上方交叉表的完整原始資料")
+                        # Show sample or all data
+                        if len(tab_filtered_df) > 1000:
+                            st.warning(f"資料筆數較多 ({len(tab_filtered_df):,} 筆)，僅顯示前 1000 筆")
+                            st.dataframe(tab_filtered_df.head(1000), width="stretch")
+                        else:
+                            st.dataframe(tab_filtered_df, width="stretch")
+                        st.write(f"**總筆數:** {len(tab_filtered_df):,} 筆")
+                        if "CNT" in tab_filtered_df.columns:
+                            total_cnt = tab_filtered_df["CNT"].sum()
+                            st.write(f"**CNT 總和:** {total_cnt:,.0f}")
+                    else:
+                        st.info(f"此分組 ({tab_key}) 無明細資料")
+                    
+                    # Show ref_df as technical detail
+                    if ref_df_by_tab is not None and tab_key in ref_df_by_tab:
+                        with st.expander("ref_df（參考總計用）", expanded=False):
+                            tab_ref_df = ref_df_by_tab[tab_key]
+                            st.caption("此為計算「參考總計」時使用的數據（pivot維度強制為Null的總計列）")
+                            if not tab_ref_df.empty:
+                                st.dataframe(tab_ref_df, width="stretch")
+                                st.write(f"**筆數:** {len(tab_ref_df)} 筆")
+                            else:
+                                st.info("無 ref_df 資料")
 
 
 # def render_growth_analysis(

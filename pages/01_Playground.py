@@ -209,7 +209,8 @@ if st.button("查詢", type="primary") or auto_run:
             all_totals,
             masked_df,
             ref_totals,
-            ref_df,
+            ref_df_by_tab,
+            filtered_df_by_tab,
         ) = compute_pivot_tables(
             df_decode,
             pivot_tab,
@@ -229,7 +230,8 @@ if st.button("查詢", type="primary") or auto_run:
             "all_totals": all_totals,
             "masked_df": masked_df,
             "ref_totals": ref_totals,
-            "ref_df": ref_df,
+            "ref_df_by_tab": ref_df_by_tab,
+            "filtered_df_by_tab": filtered_df_by_tab,
             "pivot_tab": pivot_tab,
             "pivot_row": pivot_row,
             "pivot_col": pivot_col,
@@ -261,7 +263,8 @@ if "last_results" in st.session_state:
             pivot_tab_col=res_data["pivot_tab"],
             chinese_columns=chinese_columns,
             ref_totals=res_data["ref_totals"],
-            ref_df=res_data["ref_df"],
+            ref_df_by_tab=res_data["ref_df_by_tab"],
+            filtered_df_by_tab=res_data.get("filtered_df_by_tab", {}),
         )
 
         # ========================= SAVE CONFIGURATION =========================

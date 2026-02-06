@@ -108,6 +108,8 @@ def compute_pivot_tables(
         # Usually internal data has value, public data hides it.
         # Assuming internal data has it.
 
+        # We'll compute ref_df_by_tab after we know unique_tabs
+        # For now, compute ref_totals as before
         ref_totals_series = ref_df.groupby(pivot_tab)["CNT"].sum()
         ref_totals = ref_totals_series.to_dict()
 
@@ -153,10 +155,24 @@ def compute_pivot_tables(
         df_all, pivot_tab, pivot_rows, pivot_cols, codebook
     )
 
+    # Create per-tab reference DataFrames (for ref_totals calculation)
+    ref_df_by_tab = {}
+    if ref_df is not None and not ref_df.empty:
+        for tab_val in unique_tabs:
+            tab_ref = ref_df[ref_df[pivot_tab] == tab_val].copy()
+            ref_df_by_tab[tab_val] = tab_ref
+    
+    # Create per-tab filtered DataFrames (actual data used for pivot table)
+    filtered_df_by_tab = {}
+    for tab_val in unique_tabs:
+        tab_filtered = df_all[df_all[pivot_tab] == tab_val].copy()
+        filtered_df_by_tab[tab_val] = tab_filtered
+
     # 2. 進行分頁篩選
     results = {}
     col_totals_tab = []
     row_totals_tab = []
+    
     all_totals_tab = []
 
     for tab_val in unique_tabs:
@@ -219,7 +235,8 @@ def compute_pivot_tables(
         all_totals_tab,
         masked_df,
         ref_totals,
-        ref_df,
+        ref_df_by_tab,
+        filtered_df_by_tab,
     )
 
 

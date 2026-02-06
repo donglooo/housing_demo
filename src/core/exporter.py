@@ -143,7 +143,8 @@ def export_all_pivots_to_excel(saved_configs: List[Dict]) -> bytes:
                     all_totals,
                     masked_df,
                     ref_totals,
-                    ref_df,
+                    ref_df_by_tab,
+                    filtered_df_by_tab,
                 ) = compute_pivot_tables(
                     df_decode,
                     cfg.get("pivot_tab"),
